@@ -1,6 +1,7 @@
 package repository
 
 import (
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/surveyking/server/internal/dto"
 	"github.com/surveyking/server/internal/model"
 	"gorm.io/gorm"
@@ -187,4 +188,62 @@ func (r *UserRepo) ListRegisterRoles() ([]model.Role, error) {
 	var roles []model.Role
 	err := r.db.Where("status = 1").Find(&roles).Error
 	return roles, err
+}
+
+// ListPendingAnswers returns answers with exam_exercise_type = 'pending' for the given user.
+func (r *UserRepo) ListPendingAnswers(userID string) ([]model.Answer, error) {
+	var answers []model.Answer
+	err := r.db.Where("exam_exercise_type = ? AND create_by = ?", "pending", userID).Find(&answers).Error
+	return answers, err
+}
+
+// ListPendingAnswersPaged returns paginated pending answers for the given user.
+func (r *UserRepo) ListPendingAnswersPaged(userID string, offset, limit int) ([]model.Answer, int64, error) {
+	var answers []model.Answer
+	var total int64
+	q := r.db.Model(&model.Answer{}).Where("exam_exercise_type = ? AND create_by = ?", "pending", userID)
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := q.Offset(offset).Limit(limit).Find(&answers).Error
+	return answers, total, err
+}
+
+// ListHistoryAnswers returns answers with exam_exercise_type IN ('approved','rejected') for the given user, paginated.
+func (r *UserRepo) ListHistoryAnswers(userID string, offset, limit int) ([]model.Answer, int64, error) {
+	var answers []model.Answer
+	var total int64
+	q := r.db.Model(&model.Answer{}).Where("exam_exercise_type IN ? AND create_by = ?", []string{"approved", "rejected"}, userID)
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := q.Offset(offset).Limit(limit).Find(&answers).Error
+	return answers, total, err
+}
+
+// UpdateUserPosition replaces all position assignments for a user in a transaction.
+func (r *UserRepo) UpdateUserPosition(userID, deptID string, positionIDs []string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", userID).Delete(&model.UserPosition{}).Error; err != nil {
+			return err
+		}
+		for _, posID := range positionIDs {
+			up := model.UserPosition{
+				UserID:     userID,
+				DeptID:     deptID,
+				PositionID: posID,
+			}
+			up.ID = nanoid(tx)
+			if err := tx.Create(&up).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// nanoid generates a new random ID using the DB connection (uses uuid as fallback).
+func nanoid(_ *gorm.DB) string {
+	id, _ := gonanoid.New()
+	return id
 }

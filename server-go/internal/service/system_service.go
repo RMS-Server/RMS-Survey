@@ -116,7 +116,21 @@ func (s *SystemService) CountDepts() (int64, error) {
 	return s.repo.CountDepts()
 }
 
-// buildDeptTree converts a flat dept list into a tree by parent_id.
+// UpdateDeptSortCodes applies sort_code updates for a batch of departments.
+func (s *SystemService) UpdateDeptSortCodes(items []dto.DeptSortRequest) error {
+	for _, item := range items {
+		if item.ID == "" {
+			continue
+		}
+		if err := s.repo.UpdateDeptSortCode(item.ID, item.SortCode); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// buildDeptTree converts a flat dept list (pre-sorted by sort_code) into a tree.
+// The input slice order is preserved for root nodes and children.
 func buildDeptTree(depts []model.Dept) []dto.DeptView {
 	nodeMap := make(map[string]*dto.DeptView, len(depts))
 	for i := range depts {
@@ -124,7 +138,9 @@ func buildDeptTree(depts []model.Dept) []dto.DeptView {
 		nodeMap[d.ID] = &dto.DeptView{Dept: d}
 	}
 	var roots []dto.DeptView
-	for _, node := range nodeMap {
+	// Iterate in original slice order to preserve sort_code ordering.
+	for i := range depts {
+		node := nodeMap[depts[i].ID]
 		if node.ParentID == "" || node.ParentID == "0" {
 			roots = append(roots, *node)
 		} else if parent, ok := nodeMap[node.ParentID]; ok {
@@ -211,6 +227,11 @@ func (s *SystemService) SaveDictItem(req dto.CommDictItemRequest) error {
 
 func (s *SystemService) DeleteDictItem(id string) error {
 	return s.repo.DeleteDictItem(id)
+}
+
+// BatchImportDictItems inserts multiple dict items atomically.
+func (s *SystemService) BatchImportDictItems(items []model.CommDictItem) error {
+	return s.repo.BatchCreateDictItems(items)
 }
 
 // --- SysInfo ---

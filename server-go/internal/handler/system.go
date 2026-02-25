@@ -4,9 +4,12 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/surveyking/server/internal/dto"
+	"github.com/surveyking/server/internal/model"
 	"github.com/surveyking/server/internal/pkg/response"
 	"github.com/surveyking/server/internal/service"
+	"github.com/xuri/excelize/v2"
 )
 
 // SystemHandler handles all /api/system/* endpoints.
@@ -286,7 +289,15 @@ func (h *SystemHandler) DeleteDept(c *gin.Context) {
 
 // SortDept handles department sort order updates.
 func (h *SystemHandler) SortDept(c *gin.Context) {
-	// Sort is a no-op placeholder; actual sort logic requires updating sort_code per ID.
+	var items []dto.DeptSortRequest
+	if err := c.ShouldBindJSON(&items); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	if err := h.svc.UpdateDeptSortCodes(items); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
 	c.Status(http.StatusOK)
 }
 
@@ -531,6 +542,56 @@ func (h *SystemHandler) CheckUsernameExist(c *gin.Context) {
 
 // ImportDictItem handles POST /api/system/dictItem/import (stub).
 func (h *SystemHandler) ImportDictItem(c *gin.Context) {
+	dictCode := c.Query("dictCode")
+	if dictCode == "" {
+		response.Fail(c, response.CodeError, "dictCode is required")
+		return
+	}
+
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		response.Fail(c, response.CodeError, "failed to read uploaded file: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	f, err := excelize.OpenReader(file)
+	if err != nil {
+		response.Fail(c, response.CodeError, "failed to parse Excel file: "+err.Error())
+		return
+	}
+	defer f.Close()
+
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		response.Fail(c, response.CodeError, "Excel file has no sheets")
+		return
+	}
+
+	rows, err := f.GetRows(sheets[0])
+	if err != nil {
+		response.Fail(c, response.CodeError, "failed to read sheet rows: "+err.Error())
+		return
+	}
+
+	// Collect all items first, then insert in one transaction.
+	// Skip header row; columns: itemName, itemValue
+	items := make([]model.CommDictItem, 0, len(rows))
+	for i, row := range rows {
+		if i == 0 || len(row) < 2 {
+			continue
+		}
+		items = append(items, model.CommDictItem{
+			ID:        uuid.New().String(),
+			DictCode:  dictCode,
+			ItemName:  row[0],
+			ItemValue: row[1],
+		})
+	}
+	if err := h.svc.BatchImportDictItems(items); err != nil {
+		response.Fail(c, response.CodeError, "import failed: "+err.Error())
+		return
+	}
 	c.Status(http.StatusOK)
 }
 
@@ -597,6 +658,19 @@ func (h *SystemHandler) SystemDeleteUser(c *gin.Context) {
 
 // SystemUpdateUserPosition handles POST /api/system/user/updatePosition (stub).
 func (h *SystemHandler) SystemUpdateUserPosition(c *gin.Context) {
+	var req dto.UpdateUserPositionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	if req.ID == "" {
+		response.Fail(c, response.CodeError, "id is required")
+		return
+	}
+	if err := h.userSvc.UpdateUserPosition(req.ID, req.DeptID, req.PositionIDs); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
 	c.Status(http.StatusOK)
 }
 

@@ -12,14 +12,15 @@ import (
 type SurveyService struct {
 	projectRepo *repository.ProjectRepo
 	answerRepo  *repository.AnswerRepo
+	systemRepo  *repository.SystemRepo
 }
 
 // NewSurveyService creates a new SurveyService.
 func NewSurveyService(projectRepo *repository.ProjectRepo, answerRepo *repository.AnswerRepo, db *gorm.DB) *SurveyService {
-	_ = db
 	return &SurveyService{
 		projectRepo: projectRepo,
 		answerRepo:  answerRepo,
+		systemRepo:  repository.NewSystemRepo(db),
 	}
 }
 
@@ -109,41 +110,156 @@ func (s *SurveyService) ValidateProject(req *dto.SurveyLoadRequest) (*dto.Survey
 	return s.LoadProject(req)
 }
 
-// StatProject returns vote/statistics data for a project.
+// StatProject counts how many times each option was selected across all submitted answers.
+// Returns Stats: map[fieldId]map[optionValue]count.
 func (s *SurveyService) StatProject(req *dto.SurveyLoadRequest) (*dto.PublicStatisticsView, error) {
 	p, err := s.projectRepo.GetProject(req.Code)
 	if err != nil {
 		return nil, err
 	}
-	return &dto.PublicStatisticsView{ProjectID: p.ID, Stats: map[string]interface{}{}}, nil
+
+	answers, err := s.answerRepo.ListByProjectID(p.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	stats := make(map[string]interface{})
+	for _, a := range answers {
+		if a.Answer == "" {
+			continue
+		}
+		// Answer JSON is map[fieldId]interface{} where value may be a string or []string
+		var answerMap map[string]interface{}
+		if err := json.Unmarshal([]byte(a.Answer), &answerMap); err != nil {
+			continue
+		}
+		for fieldID, val := range answerMap {
+			existing, ok := stats[fieldID]
+			var counts map[string]int
+			if ok {
+				// Safe assertion: we always store map[string]int for this key.
+				counts, ok = existing.(map[string]int)
+				if !ok {
+					counts = make(map[string]int)
+				}
+			} else {
+				counts = make(map[string]int)
+			}
+			stats[fieldID] = counts
+
+			switch v := val.(type) {
+			case string:
+				if v != "" {
+					counts[v]++
+				}
+			case []interface{}:
+				for _, item := range v {
+					if s, ok := item.(string); ok && s != "" {
+						counts[s]++
+					}
+				}
+			}
+		}
+	}
+
+	return &dto.PublicStatisticsView{ProjectID: p.ID, Stats: stats}, nil
 }
 
-// LoadQuery returns the public query verify view.
+// LoadQuery returns the public query verify view including the survey schema.
 func (s *SurveyService) LoadQuery(req *dto.PublicQueryRequest) (*dto.PublicQueryVerifyView, error) {
 	p, err := s.projectRepo.GetProject(req.ProjectID)
 	if err != nil {
 		return nil, err
 	}
-	return &dto.PublicQueryVerifyView{ProjectID: p.ID, Name: p.Name}, nil
+	return &dto.PublicQueryVerifyView{
+		ProjectID: p.ID,
+		Name:      p.Name,
+		Survey:    json.RawMessage(p.Survey),
+	}, nil
 }
 
-// GetQueryResult returns public query results.
+// GetQueryResult returns submitted answers for a project, optionally filtered by answer code.
 func (s *SurveyService) GetQueryResult(req *dto.PublicQueryRequest) (*dto.PublicQueryView, error) {
-	return &dto.PublicQueryView{ProjectID: req.ProjectID, Answers: []interface{}{}}, nil
+	answers, err := s.answerRepo.ListByProjectID(req.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]interface{}, 0, len(answers))
+	for _, a := range answers {
+		result = append(result, map[string]interface{}{
+			"id":     a.ID,
+			"answer": json.RawMessage(a.Answer),
+		})
+	}
+
+	return &dto.PublicQueryView{ProjectID: req.ProjectID, Answers: result}, nil
 }
 
-// LoadDict returns dictionary entries for a survey.
+// LoadDict returns dictionary items for the requested dict codes.
 func (s *SurveyService) LoadDict(req *dto.PublicDictRequest) ([]dto.PublicDictView, error) {
-	return []dto.PublicDictView{}, nil
+	if len(req.Codes) == 0 {
+		return []dto.PublicDictView{}, nil
+	}
+
+	items, err := s.systemRepo.ListDictItemsByCodes(req.Codes)
+	if err != nil {
+		return nil, err
+	}
+
+	views := make([]dto.PublicDictView, 0, len(items))
+	for _, item := range items {
+		views = append(views, dto.PublicDictView{
+			Code:  item.DictCode,
+			Label: item.ItemName,
+			Value: item.ItemValue,
+		})
+	}
+	return views, nil
 }
 
-// LoadExamResult returns exam scoring result for an answer.
+// examInfo is the JSON structure stored in answer.exam_info.
+type examInfo struct {
+	MaxScore float64 `json:"maxScore"`
+	Passed   bool    `json:"passed"`
+}
+
+// LoadExamResult reads exam score and pass status from the stored answer.
 func (s *SurveyService) LoadExamResult(req *dto.PublicExamRequest) (*dto.PublicExamResult, error) {
-	return &dto.PublicExamResult{Score: 0, MaxScore: 0, Passed: false}, nil
+	a, err := s.answerRepo.GetAnswer(req.AnswerID)
+	if err != nil {
+		return nil, err
+	}
+
+	var score float64
+	if a.ExamScore != nil {
+		score = float64(*a.ExamScore)
+	}
+
+	var info examInfo
+	if a.ExamInfo != "" {
+		_ = json.Unmarshal([]byte(a.ExamInfo), &info)
+	}
+
+	return &dto.PublicExamResult{
+		Score:    score,
+		MaxScore: info.MaxScore,
+		Passed:   info.Passed,
+	}, nil
 }
 
-// LoadLinkResult returns linked survey result data.
+// LoadLinkResult returns the answer data for a linked survey answer.
 func (s *SurveyService) LoadLinkResult(req *dto.PublicLinkRequest) (*dto.PublicLinkResult, error) {
-	return &dto.PublicLinkResult{ProjectID: req.ProjectID}, nil
-}
+	a, err := s.answerRepo.GetAnswer(req.AnswerID)
+	if err != nil {
+		return nil, err
+	}
 
+	var data interface{}
+	if a.Answer != "" {
+		var raw json.RawMessage = json.RawMessage(a.Answer)
+		data = raw
+	}
+
+	return &dto.PublicLinkResult{ProjectID: req.ProjectID, Data: data}, nil
+}

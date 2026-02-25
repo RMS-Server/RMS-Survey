@@ -146,8 +146,25 @@ func (r *SystemRepo) SaveDictItem(item *model.CommDictItem) error {
 	return r.db.Save(item).Error
 }
 
+// BatchCreateDictItems inserts multiple dict items in a single transaction.
+func (r *SystemRepo) BatchCreateDictItems(items []model.CommDictItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		return tx.Create(&items).Error
+	})
+}
+
 func (r *SystemRepo) DeleteDictItem(id string) error {
 	return r.db.Delete(&model.CommDictItem{}, "id = ?", id).Error
+}
+
+// ListDictItemsByCodes returns all dict items whose dict_code is in the given list.
+func (r *SystemRepo) ListDictItemsByCodes(codes []string) ([]model.CommDictItem, error) {
+	var items []model.CommDictItem
+	err := r.db.Where("dict_code IN ?", codes).Order("item_order ASC").Find(&items).Error
+	return items, err
 }
 
 // --- SysInfo ---
@@ -225,4 +242,9 @@ func (r *SystemRepo) CreateTag(tag *model.Tag) error {
 
 func (r *SystemRepo) DeleteTag(id string) error {
 	return r.db.Delete(&model.Tag{}, "id = ?", id).Error
+}
+
+// UpdateDeptSortCode updates the sort_code for a single department by ID.
+func (r *SystemRepo) UpdateDeptSortCode(id string, sortCode int) error {
+	return r.db.Model(&model.Dept{}).Where("id = ?", id).Update("sort_code", sortCode).Error
 }

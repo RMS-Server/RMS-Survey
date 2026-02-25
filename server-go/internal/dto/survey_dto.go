@@ -56,8 +56,9 @@ type PublicQueryRequest struct {
 
 // PublicQueryVerifyView is returned by loadQuery.
 type PublicQueryVerifyView struct {
-	ProjectID string `json:"projectId"`
-	Name      string `json:"name"`
+	ProjectID string          `json:"projectId"`
+	Name      string          `json:"name"`
+	Survey    json.RawMessage `json:"survey"`
 }
 
 // PublicQueryView is returned by getQueryResult.

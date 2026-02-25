@@ -11,14 +11,22 @@ import (
 
 // ProjectHandler handles all project HTTP endpoints.
 type ProjectHandler struct {
-	svc *service.ProjectService
+	svc         *service.ProjectService
+	userSvc     *service.UserService
+	systemSvc   *service.SystemService
+	templateSvc *service.TemplateService
+	repoSvc     *service.RepoService
 }
 
 // NewProjectHandler creates a ProjectHandler wired to the given DB.
 func NewProjectHandler(db *gorm.DB) *ProjectHandler {
-	repo := repository.NewProjectRepo(db)
-	svc := service.NewProjectService(repo)
-	return &ProjectHandler{svc: svc}
+	return &ProjectHandler{
+		svc:         service.NewProjectService(repository.NewProjectRepo(db)),
+		userSvc:     service.NewUserService(repository.NewUserRepo(db)),
+		systemSvc:   service.NewSystemService(repository.NewSystemRepo(db)),
+		templateSvc: service.NewTemplateService(repository.NewTemplateRepository(db)),
+		repoSvc:     service.NewRepoService(repository.NewRepoRepository(db), repository.NewUserBookRepository(db)),
+	}
 }
 
 // RegisterRoutes wires all project routes onto the provided gin group.
@@ -224,42 +232,128 @@ func (h *ProjectHandler) ImportPartner(c *gin.Context) {
 	response.OK(c, nil)
 }
 
-// SelectUser returns users matching a keyword for the editor.
-func (h *ProjectHandler) SelectUser(c *gin.Context) {
-	response.OK(c, []interface{}{})
+// selectKeyword extracts the "name" field from a JSON body for keyword filtering.
+// The frontend editor sends {"name": "keyword"} for all select endpoints.
+func selectKeyword(c *gin.Context) string {
+	var body struct {
+		Name string `json:"name"`
+	}
+	_ = c.ShouldBindJSON(&body)
+	return body.Name
 }
 
-// SelectDept returns departments matching a keyword for the editor.
+// SelectUser returns users matching a keyword for the editor collaborator picker.
+func (h *ProjectHandler) SelectUser(c *gin.Context) {
+	name := selectKeyword(c)
+	result, err := h.userSvc.ListUsers(dto.UserQueryRequest{
+		PageRequest: dto.PageRequest{PageIndex: 1, PageSize: 20},
+		Name:        name,
+	})
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result.List)
+}
+
+// SelectDept returns the full department tree for the editor.
 func (h *ProjectHandler) SelectDept(c *gin.Context) {
-	response.OK(c, []interface{}{})
+	result, err := h.systemSvc.ListDepts()
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result)
 }
 
 // SelectRole returns roles matching a keyword for the editor.
 func (h *ProjectHandler) SelectRole(c *gin.Context) {
-	response.OK(c, []interface{}{})
+	name := selectKeyword(c)
+	result, err := h.systemSvc.ListRoles(dto.RoleQuery{
+		PageRequest: dto.PageRequest{PageIndex: 1, PageSize: 20},
+		Name:        name,
+	})
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result.List)
 }
 
 // SelectPosition returns positions matching a keyword for the editor.
 func (h *ProjectHandler) SelectPosition(c *gin.Context) {
-	response.OK(c, []interface{}{})
+	name := selectKeyword(c)
+	result, err := h.systemSvc.ListPositions(dto.PositionQuery{
+		PageRequest: dto.PageRequest{PageIndex: 1, PageSize: 20},
+		Name:        name,
+	})
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result.List)
 }
 
-// SelectDict returns dictionaries for the editor.
+// SelectDict returns dictionaries matching a keyword for the editor.
 func (h *ProjectHandler) SelectDict(c *gin.Context) {
-	response.OK(c, []interface{}{})
+	name := selectKeyword(c)
+	result, err := h.systemSvc.ListDicts(dto.CommDictQuery{
+		PageRequest: dto.PageRequest{PageIndex: 1, PageSize: 20},
+		Name:        name,
+	})
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result.List)
 }
 
-// SelectTemplate returns templates matching a keyword for the editor.
+// SelectTemplate returns a paginated list of templates matching a keyword for the editor.
 func (h *ProjectHandler) SelectTemplate(c *gin.Context) {
-	response.OK(c, map[string]interface{}{})
+	var query dto.TemplateQuery
+	_ = c.ShouldBindJSON(&query)
+	if query.PageSize <= 0 {
+		query.PageSize = 10
+	}
+	if query.PageIndex <= 0 {
+		query.PageIndex = 1
+	}
+	result, err := h.templateSvc.List(query)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result)
 }
 
 // SelectRepo returns repos matching a keyword for the editor.
 func (h *ProjectHandler) SelectRepo(c *gin.Context) {
-	response.OK(c, []interface{}{})
+	name := selectKeyword(c)
+	result, err := h.repoSvc.List(dto.RepoQuery{
+		PageRequest: dto.PageRequest{PageIndex: 1, PageSize: 20},
+		Name:        name,
+	})
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result.List)
 }
 
-// SelectTag returns tags matching a keyword for the editor.
+// SelectTag returns tags matching a category/entityId for the editor.
 func (h *ProjectHandler) SelectTag(c *gin.Context) {
-	response.OK(c, []interface{}{})
+	var query dto.SystemTagQuery
+	_ = c.ShouldBindJSON(&query)
+	if query.PageSize <= 0 {
+		query.PageSize = 20
+	}
+	if query.PageIndex <= 0 {
+		query.PageIndex = 1
+	}
+	result, err := h.systemSvc.ListTags(query)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result.List)
 }

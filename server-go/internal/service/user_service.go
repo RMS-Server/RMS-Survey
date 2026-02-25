@@ -93,13 +93,13 @@ func (s *UserService) GetRSAPublicKey() (string, error) {
 // RotateRSAKey forces regeneration of the RSA key pair, replacing the stored one.
 // Holds the write lock for the entire DB + cache update to prevent stale-key races.
 func (s *UserService) RotateRSAKey() (string, error) {
+	rsaKeyCache.Lock()
+	defer rsaKeyCache.Unlock()
+
 	priv, pub, err := rsapkg.GenerateKeyPair()
 	if err != nil {
 		return "", err
 	}
-
-	rsaKeyCache.Lock()
-	defer rsaKeyCache.Unlock()
 
 	if err := s.repo.DeleteSysInfoByName("rsa_private_key"); err != nil {
 		return "", err
@@ -372,12 +372,62 @@ func (s *UserService) CheckUsernameExist(username string) bool {
 
 // GetUserTasks returns paginated pending flow tasks for the current user.
 func (s *UserService) GetUserTasks(userID string, query dto.MyTaskQuery) (*dto.PageResponse[dto.MyTaskView], error) {
-	return &dto.PageResponse[dto.MyTaskView]{List: []dto.MyTaskView{}, Total: 0}, nil
+	pageIndex := query.PageIndex
+	if pageIndex < 1 {
+		pageIndex = 1
+	}
+	pageSize := query.PageSize
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	offset := (pageIndex - 1) * pageSize
+	answers, total, err := s.repo.ListPendingAnswersPaged(userID, offset, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]dto.MyTaskView, 0, len(answers))
+	for _, a := range answers {
+		views = append(views, dto.MyTaskView{
+			ID:        a.ID,
+			ProjectID: a.ProjectID,
+			Status:    0,
+			CreatedAt: a.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+	return &dto.PageResponse[dto.MyTaskView]{List: views, Total: total}, nil
 }
 
 // GetHistoryTasks returns paginated completed flow tasks for the current user.
 func (s *UserService) GetHistoryTasks(userID string, query dto.MyTaskQuery) (*dto.PageResponse[dto.MyTaskView], error) {
-	return &dto.PageResponse[dto.MyTaskView]{List: []dto.MyTaskView{}, Total: 0}, nil
+	pageIndex := query.PageIndex
+	if pageIndex < 1 {
+		pageIndex = 1
+	}
+	pageSize := query.PageSize
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	offset := (pageIndex - 1) * pageSize
+
+	answers, total, err := s.repo.ListHistoryAnswers(userID, offset, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]dto.MyTaskView, 0, len(answers))
+	for _, a := range answers {
+		views = append(views, dto.MyTaskView{
+			ID:        a.ID,
+			ProjectID: a.ProjectID,
+			Status:    1,
+			CreatedAt: a.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+	return &dto.PageResponse[dto.MyTaskView]{List: views, Total: total}, nil
+}
+
+// UpdateUserPosition replaces position assignments for a user.
+func (s *UserService) UpdateUserPosition(userID, deptID string, positionIDs []string) error {
+	return s.repo.UpdateUserPosition(userID, deptID, positionIDs)
 }
 
 // GetUserAuthorities returns all authority strings for a user based on their roles.

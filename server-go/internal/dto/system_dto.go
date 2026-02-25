@@ -50,9 +50,10 @@ type DeptRequest struct {
 	Remark    string `json:"remark"`
 }
 
-// DeptSortRequest holds sort order for departments.
+// DeptSortRequest holds sort order updates for a batch of departments.
 type DeptSortRequest struct {
-	IDs []string `json:"ids"`
+	ID       string `json:"id"`
+	SortCode int    `json:"sortCode"`
 }
 
 // CommDictView is the response DTO for a data dictionary.
