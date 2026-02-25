@@ -169,3 +169,22 @@ func (r *UserRepo) SaveSysInfo(info *model.SysInfo) error {
 	}
 	return r.db.Save(info).Error
 }
+
+// DeleteSysInfoByName removes a SysInfo record by its name key.
+func (r *UserRepo) DeleteSysInfoByName(name string) error {
+	return r.db.Where("name = ?", name).Delete(&model.SysInfo{}).Error
+}
+
+// CountProjectsByUser counts projects created by the given user.
+func (r *UserRepo) CountProjectsByUser(userID string) (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Project{}).Where("create_by = ? AND deleted_at IS NULL", userID).Count(&count).Error
+	return count, err
+}
+
+// ListRegisterRoles returns roles that allow self-registration (register_info not empty).
+func (r *UserRepo) ListRegisterRoles() ([]model.Role, error) {
+	var roles []model.Role
+	err := r.db.Where("status = 1").Find(&roles).Error
+	return roles, err
+}

@@ -46,10 +46,12 @@ type FlowOperationView struct {
 
 // ApprovalTaskRequest is used to approve or reject a task.
 type ApprovalTaskRequest struct {
-	TaskID    string `json:"taskId"`
-	Action    string `json:"action"` // approve | reject | cancel
-	Comment   string `json:"comment"`
-	RevertTo  string `json:"revertTo"`
+	TaskID       string `json:"taskId"`
+	Action       string `json:"action"` // approve | reject | cancel
+	Comment      string `json:"comment"`
+	RevertTo     string `json:"revertTo"`
+	OperatorID   string `json:"operatorId"`
+	OperatorName string `json:"operatorName"`
 }
 
 // RevokeView represents a node that can be reverted to.

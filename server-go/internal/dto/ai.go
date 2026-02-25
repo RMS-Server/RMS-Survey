@@ -1,13 +1,5 @@
 package dto
 
-// ReportData holds the aggregated report data for a project.
-type ReportData struct {
-	ProjectID   string      `json:"projectId"`
-	ProjectName string      `json:"projectName"`
-	Total       int64       `json:"total"`
-	Items       interface{} `json:"items"`
-}
-
 // AIMessage is a single message in a chat conversation.
 type AIMessage struct {
 	Role    string `json:"role"`

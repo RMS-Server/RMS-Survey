@@ -16,6 +16,7 @@ type RepoView struct {
 // RepoQuery is used to query repos.
 type RepoQuery struct {
 	PageRequest
+	RepoID   string `form:"repoId"`
 	Name     string `form:"name"`
 	Category string `form:"category"`
 	Mode     string `form:"mode"`

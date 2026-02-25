@@ -21,7 +21,16 @@ func (r *ExerciseRepository) List(projectID string, offset, limit int) ([]model.
 	if projectID != "" {
 		q = q.Where("project_id = ?", projectID)
 	}
-	q.Count(&total)
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	err := q.Offset(offset).Limit(limit).Find(&items).Error
 	return items, total, err
+}
+
+// GetByID fetches an answer record by its primary key.
+func (r *ExerciseRepository) GetByID(id string) (*model.Answer, error) {
+	var a model.Answer
+	err := r.db.Where("id = ?", id).First(&a).Error
+	return &a, err
 }

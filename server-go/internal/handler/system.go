@@ -11,11 +11,17 @@ import (
 
 // SystemHandler handles all /api/system/* endpoints.
 type SystemHandler struct {
-	svc *service.SystemService
+	svc     *service.SystemService
+	userSvc *service.UserService
 }
 
 func NewSystemHandler(svc *service.SystemService) *SystemHandler {
 	return &SystemHandler{svc: svc}
+}
+
+// NewSystemHandlerWithUser creates a SystemHandler with user service for system/user/* routes.
+func NewSystemHandlerWithUser(svc *service.SystemService, userSvc *service.UserService) *SystemHandler {
+	return &SystemHandler{svc: svc, userSvc: userSvc}
 }
 
 // RegisterRoutes wires all system routes onto the given gin.RouterGroup.
@@ -27,6 +33,9 @@ func (h *SystemHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	// System info update (admin only)
 	rg.POST("/update", h.UpdateSystemInfo)
 
+	// AI setting
+	rg.GET("/aiSetting", h.GetAISetting)
+
 	// Role management
 	rg.GET("/role/list", h.ListRoles)
 	rg.POST("/role/create", h.CreateRole)
@@ -35,6 +44,7 @@ func (h *SystemHandler) RegisterRoutes(rg *gin.RouterGroup) {
 
 	// Permission list
 	rg.Any("/permission/list", h.ListPermissions)
+	rg.GET("/permission/diff", h.PermissionDiff)
 
 	// Dept management
 	rg.GET("/dept/list", h.ListDepts)
@@ -54,6 +64,7 @@ func (h *SystemHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/dictItem/create", h.CreateDictItem)
 	rg.POST("/dictItem/update", h.UpdateDictItem)
 	rg.POST("/dictItem/delete", h.DeleteDictItem)
+	rg.POST("/dictItem/import", h.ImportDictItem)
 
 	// Position management
 	rg.GET("/position/list", h.ListPositions)
@@ -65,6 +76,22 @@ func (h *SystemHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/tag/list", h.ListTags)
 	rg.POST("/tag/create", h.CreateTag)
 	rg.POST("/tag/delete", h.DeleteTag)
+
+	// Check username
+	rg.GET("/checkUsernameExist", h.CheckUsernameExist)
+
+	// RSA key rotation
+	rg.POST("/rotateRsaKey", h.RotateRsaKey)
+
+	// System user management (mirrors /api/user/* but under /api/system/user/*)
+	if h.userSvc != nil {
+		userGrp := rg.Group("/user")
+		userGrp.GET("/list", h.SystemListUsers)
+		userGrp.POST("/create", h.SystemCreateUser)
+		userGrp.POST("/update", h.SystemUpdateUser)
+		userGrp.POST("/delete", h.SystemDeleteUser)
+		userGrp.POST("/updatePosition", h.SystemUpdateUserPosition)
+	}
 }
 
 // GetSystemInfo returns current system info (public, no auth required).
@@ -475,4 +502,114 @@ func (h *SystemHandler) DeleteTag(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusOK)
+}
+
+// GetAISetting returns the AI configuration (token masked).
+func (h *SystemHandler) GetAISetting(c *gin.Context) {
+	info, err := h.svc.GetSysInfo()
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, info)
+}
+
+// PermissionDiff is a no-op stub (compares DB vs code permissions).
+func (h *SystemHandler) PermissionDiff(c *gin.Context) {
+	c.Status(http.StatusOK)
+}
+
+// CheckUsernameExist returns true if the username is already taken.
+func (h *SystemHandler) CheckUsernameExist(c *gin.Context) {
+	username := c.Query("username")
+	if h.userSvc == nil {
+		response.OK(c, false)
+		return
+	}
+	response.OK(c, h.userSvc.CheckUsernameExist(username))
+}
+
+// ImportDictItem handles POST /api/system/dictItem/import (stub).
+func (h *SystemHandler) ImportDictItem(c *gin.Context) {
+	c.Status(http.StatusOK)
+}
+
+// SystemListUsers handles GET /api/system/user/list
+func (h *SystemHandler) SystemListUsers(c *gin.Context) {
+	var req dto.UserQueryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	result, err := h.userSvc.ListUsers(req)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result)
+}
+
+// SystemCreateUser handles POST /api/system/user/create
+func (h *SystemHandler) SystemCreateUser(c *gin.Context) {
+	var req dto.CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	if err := h.userSvc.CreateUser(req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
+// SystemUpdateUser handles POST /api/system/user/update
+func (h *SystemHandler) SystemUpdateUser(c *gin.Context) {
+	var req dto.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	if err := h.userSvc.UpdateUser(req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
+// SystemDeleteUser handles POST /api/system/user/delete
+func (h *SystemHandler) SystemDeleteUser(c *gin.Context) {
+	var req dto.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	if req.ID == "" {
+		c.Status(http.StatusOK)
+		return
+	}
+	if err := h.userSvc.DeleteUser(req.ID); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
+// SystemUpdateUserPosition handles POST /api/system/user/updatePosition (stub).
+func (h *SystemHandler) SystemUpdateUserPosition(c *gin.Context) {
+	c.Status(http.StatusOK)
+}
+
+// RotateRsaKey handles POST /api/system/rotateRsaKey — forces RSA key pair regeneration.
+func (h *SystemHandler) RotateRsaKey(c *gin.Context) {
+	if h.userSvc == nil {
+		response.Fail(c, response.CodeError, "user service unavailable")
+		return
+	}
+	pub, err := h.userSvc.RotateRSAKey()
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, pub)
 }

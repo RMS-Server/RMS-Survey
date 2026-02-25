@@ -85,3 +85,32 @@ type UserQueryRequest struct {
 	RoleID string `form:"roleId"`
 	DeptID string `form:"deptId"`
 }
+
+// UserOverview holds summary statistics for the current user's dashboard.
+type UserOverview struct {
+	TotalProjects int `json:"totalProjects"`
+	TotalAnswers  int `json:"totalAnswers"`
+	TodayAnswers  int `json:"todayAnswers"`
+}
+
+// RegisterRoleView is a role available for self-registration.
+type RegisterRoleView struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Code string `json:"code"`
+}
+
+// MyTaskQuery holds query params for listing user tasks.
+type MyTaskQuery struct {
+	PageRequest
+	ProjectID string `form:"projectId"`
+}
+
+// MyTaskView is a single task entry in the user's task list.
+type MyTaskView struct {
+	ID          string `json:"id"`
+	ProjectID   string `json:"projectId"`
+	ProjectName string `json:"projectName"`
+	Status      int    `json:"status"`
+	CreatedAt   string `json:"createAt"`
+}

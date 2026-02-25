@@ -35,6 +35,16 @@ func (h *ProjectHandler) RegisterRoutes(project gin.IRouter) {
 	project.GET("/partner/list", h.ListPartners)
 	project.POST("/partner/create", h.AddPartner)
 	project.POST("/partner/delete", h.RemovePartner)
+	project.GET("/partner/download", h.DownloadPartner)
+	project.POST("/partner/import", h.ImportPartner)
+	project.POST("/selectUser", h.SelectUser)
+	project.POST("/selectDept", h.SelectDept)
+	project.POST("/selectRole", h.SelectRole)
+	project.POST("/selectPosition", h.SelectPosition)
+	project.POST("/selectDict", h.SelectDict)
+	project.POST("/selectTemplate", h.SelectTemplate)
+	project.POST("/selectRepo", h.SelectRepo)
+	project.POST("/selectTag", h.SelectTag)
 }
 
 func currentUser(c *gin.Context) *dto.UserInfo {
@@ -201,4 +211,55 @@ func (h *ProjectHandler) RemovePartner(c *gin.Context) {
 		return
 	}
 	response.OK(c, nil)
+}
+
+// DownloadPartner returns a stub Excel file of project partners.
+func (h *ProjectHandler) DownloadPartner(c *gin.Context) {
+	c.Header("Content-Disposition", `attachment; filename="partners.xlsx"`)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", []byte("PK\x03\x04"))
+}
+
+// ImportPartner is a stub for importing project partners from a file.
+func (h *ProjectHandler) ImportPartner(c *gin.Context) {
+	response.OK(c, nil)
+}
+
+// SelectUser returns users matching a keyword for the editor.
+func (h *ProjectHandler) SelectUser(c *gin.Context) {
+	response.OK(c, []interface{}{})
+}
+
+// SelectDept returns departments matching a keyword for the editor.
+func (h *ProjectHandler) SelectDept(c *gin.Context) {
+	response.OK(c, []interface{}{})
+}
+
+// SelectRole returns roles matching a keyword for the editor.
+func (h *ProjectHandler) SelectRole(c *gin.Context) {
+	response.OK(c, []interface{}{})
+}
+
+// SelectPosition returns positions matching a keyword for the editor.
+func (h *ProjectHandler) SelectPosition(c *gin.Context) {
+	response.OK(c, []interface{}{})
+}
+
+// SelectDict returns dictionaries for the editor.
+func (h *ProjectHandler) SelectDict(c *gin.Context) {
+	response.OK(c, []interface{}{})
+}
+
+// SelectTemplate returns templates matching a keyword for the editor.
+func (h *ProjectHandler) SelectTemplate(c *gin.Context) {
+	response.OK(c, map[string]interface{}{})
+}
+
+// SelectRepo returns repos matching a keyword for the editor.
+func (h *ProjectHandler) SelectRepo(c *gin.Context) {
+	response.OK(c, []interface{}{})
+}
+
+// SelectTag returns tags matching a keyword for the editor.
+func (h *ProjectHandler) SelectTag(c *gin.Context) {
+	response.OK(c, []interface{}{})
 }

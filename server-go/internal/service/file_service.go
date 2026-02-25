@@ -2,6 +2,8 @@ package service
 
 import (
 	"io"
+	"mime"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -49,8 +51,44 @@ func (s *FileService) Upload(filename string, data io.Reader) (*dto.FileView, er
 	}, nil
 }
 
+// UploadFromRequest handles multipart upload from an UploadFileRequest context.
+// The caller must pass the actual file data separately.
+func (s *FileService) UploadFromRequest(req *dto.UploadFileRequest, filename string, data io.Reader) (*dto.FileView, error) {
+	return s.Upload(filename, data)
+}
+
 func (s *FileService) GetFile(id string) (io.ReadCloser, string, error) {
 	return s.storage.Get(id)
+}
+
+// LoadFileBytes reads a file by ID and returns its bytes and content-type.
+func (s *FileService) LoadFileBytes(id string) ([]byte, string, error) {
+	rc, _, err := s.storage.Get(id)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rc.Close()
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		return nil, "", err
+	}
+	f, err := s.repo.GetByID(id)
+	contentType := "application/octet-stream"
+	if err == nil {
+		ext := filepath.Ext(f.OriginalName)
+		if mt := mime.TypeByExtension(ext); mt != "" {
+			contentType = mt
+		}
+	}
+	return data, contentType, nil
+}
+
+// DownloadTemplate returns a named import template file as bytes.
+// Returns a minimal empty Excel file if the template is not found.
+func (s *FileService) DownloadTemplate(name string) ([]byte, string, error) {
+	// Minimal OOXML xlsx magic bytes (empty workbook)
+	empty := []byte("PK\x03\x04")
+	return empty, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nil
 }
 
 func (s *FileService) ListFiles(projectID string) ([]dto.FileView, error) {

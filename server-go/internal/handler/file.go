@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -82,3 +83,19 @@ func (h *FileHandler) DeleteFile(c *gin.Context) {
 	}
 	response.OK(c, nil)
 }
+
+// DownloadTemplate serves a named import template file.
+func (h *FileHandler) DownloadTemplate(c *gin.Context) {
+	name := c.Query("name")
+	if name == "" {
+		name = "template"
+	}
+	data, contentType, err := h.svc.DownloadTemplate(name)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.xlsx"`, name))
+	c.Data(http.StatusOK, contentType, data)
+}
+

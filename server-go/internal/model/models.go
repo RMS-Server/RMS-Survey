@@ -284,5 +284,18 @@ type UserRole struct {
 
 func (UserRole) TableName() string { return "t_user_role" }
 
+// FlowOperation maps to t_flow_operation (approval history).
+type FlowOperation struct {
+	BaseModelCreateOnly
+	ProcessInstanceID string `gorm:"column:process_instance_id;size:64;not null" json:"processInstanceId"`
+	AnswerID          string `gorm:"column:answer_id;size:64;not null" json:"answerId"`
+	OperatorID        string `gorm:"column:operator_id;size:64" json:"operatorId"`
+	OperatorName      string `gorm:"column:operator_name;size:256" json:"operatorName"`
+	Action            string `gorm:"column:action;size:32" json:"action"`
+	Comment           string `gorm:"column:comment;size:1024" json:"comment"`
+}
+
+func (FlowOperation) TableName() string { return "t_flow_operation" }
+
 // Ensure datatypes import is used (for future JSON column usage).
 var _ datatypes.JSON

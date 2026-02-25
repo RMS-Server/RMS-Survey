@@ -137,8 +137,32 @@ func (s *AnswerService) RestoreAnswer(req *dto.AnswerRequest) error {
 	return nil
 }
 
-// ExportAnswers exports answers to an Excel file and returns the bytes.
+// ExportAnswers exports answers to an Excel file with dynamic question headers.
 func (s *AnswerService) ExportAnswers(query *dto.DownloadQuery) ([]byte, string, error) {
+	project, err := s.projectRepo.GetProject(query.ProjectID)
+	if err != nil {
+		return nil, "", fmt.Errorf("get project: %w", err)
+	}
+
+	// Parse survey JSON to extract question order and titles.
+	var schema surveySchema
+	if project.Survey != "" {
+		if err := json.Unmarshal([]byte(project.Survey), &schema); err != nil {
+			return nil, "", fmt.Errorf("parse survey schema: %w", err)
+		}
+	}
+
+	type questionMeta struct {
+		id    string
+		title string
+	}
+	var questions []questionMeta
+	for _, page := range schema.Pages {
+		for _, el := range page.Elements {
+			questions = append(questions, questionMeta{id: el.ID, title: el.Title})
+		}
+	}
+
 	answers, err := s.repo.ListByProjectID(query.ProjectID)
 	if err != nil {
 		return nil, "", err
@@ -147,23 +171,41 @@ func (s *AnswerService) ExportAnswers(query *dto.DownloadQuery) ([]byte, string,
 	f := excelize.NewFile()
 	sheet := "Sheet1"
 
-	// Write header row
-	headers := []string{"ID", "ProjectID", "Answer", "MetaInfo", "CreateAt"}
+	// Build dynamic headers: fixed columns first, then one column per question.
+	headers := make([]string, 0, 2+len(questions))
+	headers = append(headers, "ID", "Submit Time")
+	for _, q := range questions {
+		title := q.title
+		if title == "" {
+			title = q.id
+		}
+		headers = append(headers, title)
+	}
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		f.SetCellValue(sheet, cell, h)
 	}
 
-	// Write data rows
+	// Write one row per answer.
 	for rowIdx, a := range answers {
 		row := rowIdx + 2
-		values := []interface{}{
-			a.ID,
-			a.ProjectID,
-			a.Answer,
-			a.MetaInfo,
-			a.CreatedAt.Format(time.RFC3339),
+
+		// Parse answer JSON into a flat map keyed by question ID.
+		var answerMap map[string]interface{}
+		if a.Answer != "" {
+			_ = json.Unmarshal([]byte(a.Answer), &answerMap)
 		}
+
+		values := make([]interface{}, 0, 2+len(questions))
+		values = append(values, a.ID, a.CreatedAt.Format("2006-01-02 15:04:05"))
+		for _, q := range questions {
+			if answerMap != nil {
+				values = append(values, formatAnswerValue(answerMap[q.id]))
+			} else {
+				values = append(values, "")
+			}
+		}
+
 		for colIdx, v := range values {
 			cell, _ := excelize.CoordinatesToCellName(colIdx+1, row)
 			f.SetCellValue(sheet, cell, v)
@@ -177,6 +219,33 @@ func (s *AnswerService) ExportAnswers(query *dto.DownloadQuery) ([]byte, string,
 
 	filename := fmt.Sprintf("answers_%s_%s.xlsx", query.ProjectID, time.Now().Format("20060102150405"))
 	return buf.Bytes(), filename, nil
+}
+
+// formatAnswerValue converts an answer value to a string suitable for Excel.
+func formatAnswerValue(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	switch val := v.(type) {
+	case string:
+		return val
+	case []interface{}:
+		// multi-select: join with comma
+		parts := make([]string, 0, len(val))
+		for _, item := range val {
+			parts = append(parts, fmt.Sprintf("%v", item))
+		}
+		result := ""
+		for i, p := range parts {
+			if i > 0 {
+				result += ","
+			}
+			result += p
+		}
+		return result
+	default:
+		return fmt.Sprintf("%v", val)
+	}
 }
 
 func toAnswerView(a model.Answer) dto.AnswerView {

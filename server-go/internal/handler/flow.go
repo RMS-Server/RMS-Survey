@@ -32,10 +32,28 @@ func (h *FlowHandler) SaveFlow(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
+	if err := h.svc.SaveFlow(req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
 	response.OK(c, nil)
 }
 
 func (h *FlowHandler) Deploy(c *gin.Context) {
+	projectID := c.Query("projectId")
+	if projectID == "" {
+		// Also accept from JSON body.
+		var body struct {
+			ProjectID string `json:"projectId"`
+		}
+		if err := c.ShouldBindJSON(&body); err == nil {
+			projectID = body.ProjectID
+		}
+	}
+	if err := h.svc.Deploy(projectID); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
 	response.OK(c, nil)
 }
 
@@ -79,6 +97,17 @@ func (h *FlowHandler) ApprovalTask(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
+	// Populate operator info from authenticated user context.
+	if u, ok := c.Get("currentUser"); ok {
+		if userInfo, ok := u.(*dto.UserInfo); ok {
+			if req.OperatorID == "" {
+				req.OperatorID = userInfo.UserID
+			}
+			if req.OperatorName == "" {
+				req.OperatorName = userInfo.Username
+			}
+		}
+	}
 	if err := h.svc.ApprovalTask(req); err != nil {
 		response.Fail(c, response.CodeError, err.Error())
 		return
@@ -88,6 +117,32 @@ func (h *FlowHandler) ApprovalTask(c *gin.Context) {
 
 func (h *FlowHandler) Statics(c *gin.Context) {
 	view, err := h.svc.Statics()
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, view)
+}
+
+// GetTaskInfo returns a single answer/task by taskId query param.
+func (h *FlowHandler) GetTaskInfo(c *gin.Context) {
+	taskID := c.Query("taskId")
+	answer, err := h.svc.GetAnswer(taskID)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, answer)
+}
+
+// LoadSchema returns the flow entry schema for a given project/process/task context.
+func (h *FlowHandler) LoadSchema(c *gin.Context) {
+	var query dto.SchemaQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	view, err := h.svc.GetFlowEntry(query.ProjectID)
 	if err != nil {
 		response.Fail(c, response.CodeError, err.Error())
 		return

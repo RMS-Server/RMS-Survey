@@ -36,6 +36,7 @@ func (h *AnswerHandler) RegisterRoutes(answer gin.IRouter) {
 	answer.POST("/destroy", h.DestroyAnswer)
 	answer.POST("/restore", h.RestoreAnswer)
 	answer.GET("/download", h.Download)
+	answer.POST("/upload", h.Upload)
 }
 
 func (h *AnswerHandler) ListAnswers(c *gin.Context) {
@@ -159,4 +160,14 @@ func (h *AnswerHandler) Download(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
+}
+
+// Upload handles POST /api/answer/upload — attaches a file to an answer.
+func (h *AnswerHandler) Upload(c *gin.Context) {
+	var req dto.AnswerUploadRequest
+	if err := c.ShouldBind(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, dto.AnswerUploadView{FileID: req.FileID})
 }

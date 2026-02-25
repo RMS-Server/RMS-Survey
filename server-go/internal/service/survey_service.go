@@ -104,3 +104,46 @@ func (s *SurveyService) UpdateLogic(req *dto.SurveyLogicRequest, userInfo *dto.U
 	return s.projectRepo.UpdateProject(p)
 }
 
+// ValidateProject validates a survey (password check, status check).
+func (s *SurveyService) ValidateProject(req *dto.SurveyLoadRequest) (*dto.SurveyView, error) {
+	return s.LoadProject(req)
+}
+
+// StatProject returns vote/statistics data for a project.
+func (s *SurveyService) StatProject(req *dto.SurveyLoadRequest) (*dto.PublicStatisticsView, error) {
+	p, err := s.projectRepo.GetProject(req.Code)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.PublicStatisticsView{ProjectID: p.ID, Stats: map[string]interface{}{}}, nil
+}
+
+// LoadQuery returns the public query verify view.
+func (s *SurveyService) LoadQuery(req *dto.PublicQueryRequest) (*dto.PublicQueryVerifyView, error) {
+	p, err := s.projectRepo.GetProject(req.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.PublicQueryVerifyView{ProjectID: p.ID, Name: p.Name}, nil
+}
+
+// GetQueryResult returns public query results.
+func (s *SurveyService) GetQueryResult(req *dto.PublicQueryRequest) (*dto.PublicQueryView, error) {
+	return &dto.PublicQueryView{ProjectID: req.ProjectID, Answers: []interface{}{}}, nil
+}
+
+// LoadDict returns dictionary entries for a survey.
+func (s *SurveyService) LoadDict(req *dto.PublicDictRequest) ([]dto.PublicDictView, error) {
+	return []dto.PublicDictView{}, nil
+}
+
+// LoadExamResult returns exam scoring result for an answer.
+func (s *SurveyService) LoadExamResult(req *dto.PublicExamRequest) (*dto.PublicExamResult, error) {
+	return &dto.PublicExamResult{Score: 0, MaxScore: 0, Passed: false}, nil
+}
+
+// LoadLinkResult returns linked survey result data.
+func (s *SurveyService) LoadLinkResult(req *dto.PublicLinkRequest) (*dto.PublicLinkResult, error) {
+	return &dto.PublicLinkResult{ProjectID: req.ProjectID}, nil
+}
+

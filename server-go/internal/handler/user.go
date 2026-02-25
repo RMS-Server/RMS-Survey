@@ -9,13 +9,13 @@ import (
 	"image/png"
 	"math/big"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	nanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/surveyking/server/internal/dto"
 	jwtpkg "github.com/surveyking/server/internal/pkg/jwt"
+	"github.com/surveyking/server/internal/pkg/cache"
 	"github.com/surveyking/server/internal/pkg/response"
 	"github.com/surveyking/server/internal/repository"
 	"github.com/surveyking/server/internal/service"
@@ -24,16 +24,8 @@ import (
 
 const cookieName = "sk-token"
 
-// captchaStore holds in-memory captcha answers with expiry.
-var captchaStore = struct {
-	sync.Mutex
-	items map[string]captchaItem
-}{items: make(map[string]captchaItem)}
-
-type captchaItem struct {
-	answer  string
-	expires time.Time
-}
+// captchaStore holds captcha answers with automatic TTL eviction via bigcache.
+var captchaStore = cache.New(5 * time.Minute)
 
 // UserHandler handles all user and auth HTTP endpoints.
 type UserHandler struct {
@@ -57,11 +49,16 @@ func (h *UserHandler) RegisterRoutes(public, captchaGrp, userGrp, root gin.IRout
 	public.POST("/logout", h.Logout)
 	public.POST("/register", h.Register)
 	public.GET("/rsaPublicKey", h.GetRSAPublicKey)
+	public.GET("/listRegisterRole", h.ListRegisterRoles)
 
 	captchaGrp.GET("/get", h.GetCaptcha)
 	captchaGrp.POST("/check", h.CheckCaptcha)
 
 	root.GET("/currentUser", h.CurrentUser)
+	root.GET("/userOverview", h.UserOverview)
+	root.GET("/listUserTask", h.ListUserTask)
+	root.GET("/listHistoryTask", h.ListHistoryTask)
+	root.POST("/importUser", h.ImportUser)
 
 	userGrp.PUT("/updatePassword", h.UpdatePassword)
 	userGrp.GET("/list", h.ListUsers)
@@ -186,7 +183,11 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	userInfo, _ := c.Get("currentUser")
+	userInfo, ok := c.Get("currentUser")
+	if !ok {
+		response.Unauthorized(c)
+		return
+	}
 	u := userInfo.(*dto.UserInfo)
 
 	if err := h.svc.UpdatePassword(u.UserID, req.OldPassword, req.NewPassword); err != nil {
@@ -278,6 +279,80 @@ func (h *UserHandler) BindRole(c *gin.Context) {
 	response.OK(c, nil)
 }
 
+// UserOverview handles GET /userOverview
+func (h *UserHandler) UserOverview(c *gin.Context) {
+	userInfo, ok := c.Get("currentUser")
+	if !ok {
+		response.Unauthorized(c)
+		return
+	}
+	u := userInfo.(*dto.UserInfo)
+	overview, err := h.svc.GetUserOverview(u.UserID)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, overview)
+}
+
+// ListRegisterRoles handles GET /api/public/listRegisterRole
+func (h *UserHandler) ListRegisterRoles(c *gin.Context) {
+	roles, err := h.svc.GetRegisterRoles()
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, roles)
+}
+
+// ImportUser handles POST /importUser
+func (h *UserHandler) ImportUser(c *gin.Context) {
+	// Stub: import from uploaded file not yet implemented
+	response.OK(c, nil)
+}
+
+// ListUserTask handles GET /listUserTask
+func (h *UserHandler) ListUserTask(c *gin.Context) {
+	userInfo, ok := c.Get("currentUser")
+	if !ok {
+		response.Unauthorized(c)
+		return
+	}
+	u := userInfo.(*dto.UserInfo)
+	var query dto.MyTaskQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	result, err := h.svc.GetUserTasks(u.UserID, query)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result)
+}
+
+// ListHistoryTask handles GET /listHistoryTask
+func (h *UserHandler) ListHistoryTask(c *gin.Context) {
+	userInfo, ok := c.Get("currentUser")
+	if !ok {
+		response.Unauthorized(c)
+		return
+	}
+	u := userInfo.(*dto.UserInfo)
+	var query dto.MyTaskQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	result, err := h.svc.GetHistoryTasks(u.UserID, query)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result)
+}
+
 // GetCaptcha handles GET /captcha/get — returns a simple base64 PNG captcha.
 func (h *UserHandler) GetCaptcha(c *gin.Context) {
 	code, err := randomDigits(4)
@@ -287,9 +362,7 @@ func (h *UserHandler) GetCaptcha(c *gin.Context) {
 	}
 
 	id, _ := nanoid.New()
-	captchaStore.Lock()
-	captchaStore.items[id] = captchaItem{answer: code, expires: time.Now().Add(5 * time.Minute)}
-	captchaStore.Unlock()
+	_ = captchaStore.Set(id, []byte(code))
 
 	img := generateCaptchaImage(code)
 	var rawBuf bytes.Buffer
@@ -313,17 +386,12 @@ func (h *UserHandler) CheckCaptcha(c *gin.Context) {
 		return
 	}
 
-	captchaStore.Lock()
-	item, ok := captchaStore.items[req.CaptchaID]
-	if ok {
-		delete(captchaStore.items, req.CaptchaID)
-	}
-	captchaStore.Unlock()
-
-	if !ok || time.Now().After(item.expires) || item.answer != req.CaptchaCode {
+	stored, err := captchaStore.Get(req.CaptchaID)
+	if err != nil || string(stored) != req.CaptchaCode {
 		response.Fail(c, response.CodeError, "captcha verification failed")
 		return
 	}
+	_ = captchaStore.Delete(req.CaptchaID)
 	response.OK(c, true)
 }
 
@@ -357,16 +425,38 @@ func generateCaptchaImage(text string) image.Image {
 	return img
 }
 
-// drawChar draws a very simple representation of a digit character.
+// digitBitmap is a 5x7 pixel bitmap for digits 0-9.
+// Each uint8 is a row bitmask (bit 4 = leftmost pixel of 5-wide glyph).
+var digitBitmap = [10][7]uint8{
+	{0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E}, // 0
+	{0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E}, // 1
+	{0x0E, 0x11, 0x01, 0x06, 0x08, 0x10, 0x1F}, // 2
+	{0x1F, 0x01, 0x02, 0x06, 0x01, 0x11, 0x0E}, // 3
+	{0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02}, // 4
+	{0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E}, // 5
+	{0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E}, // 6
+	{0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08}, // 7
+	{0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E}, // 8
+	{0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C}, // 9
+}
+
+// drawChar renders a digit character using a 5x7 bitmap at 2x scale.
 func drawChar(img *image.RGBA, x, y int, ch rune) {
+	if ch < '0' || ch > '9' {
+		return
+	}
 	c := color.RGBA{R: 50, G: 50, B: 200, A: 255}
-	// Draw a 3x5 pixel block as a placeholder character indicator
-	for dy := 0; dy < 10; dy++ {
-		for dx := 0; dx < 8; dx++ {
-			img.Set(x+dx, y+dy, c)
+	bitmap := digitBitmap[ch-'0']
+	for row, mask := range bitmap {
+		for col := 0; col < 5; col++ {
+			if mask&(1<<uint(4-col)) != 0 {
+				// 2x scale
+				img.Set(x+col*2, y+row*2, c)
+				img.Set(x+col*2+1, y+row*2, c)
+				img.Set(x+col*2, y+row*2+1, c)
+				img.Set(x+col*2+1, y+row*2+1, c)
+			}
 		}
 	}
-	// Encode digit value as a small pattern
-	_ = ch
 }
 

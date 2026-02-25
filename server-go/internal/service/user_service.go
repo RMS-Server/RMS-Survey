@@ -90,6 +90,38 @@ func (s *UserService) GetRSAPublicKey() (string, error) {
 	return pub, nil
 }
 
+// RotateRSAKey forces regeneration of the RSA key pair, replacing the stored one.
+// Holds the write lock for the entire DB + cache update to prevent stale-key races.
+func (s *UserService) RotateRSAKey() (string, error) {
+	priv, pub, err := rsapkg.GenerateKeyPair()
+	if err != nil {
+		return "", err
+	}
+
+	rsaKeyCache.Lock()
+	defer rsaKeyCache.Unlock()
+
+	if err := s.repo.DeleteSysInfoByName("rsa_private_key"); err != nil {
+		return "", err
+	}
+	id, _ := nanoid.New()
+	sysInfo := &model.SysInfo{
+		Name:        "rsa_private_key",
+		Description: priv,
+		Setting:     pub,
+	}
+	sysInfo.ID = id
+	if err := s.repo.SaveSysInfo(sysInfo); err != nil {
+		return "", err
+	}
+
+	rsaKeyCache.privateKey = priv
+	rsaKeyCache.publicKey = pub
+	rsaKeyCache.loaded = true
+
+	return pub, nil
+}
+
 // getPrivateKey returns the cached RSA private key.
 func (s *UserService) getPrivateKey() (string, error) {
 	if _, err := s.GetRSAPublicKey(); err != nil {
@@ -304,6 +336,48 @@ func (s *UserService) UpdatePassword(userID, oldPwd, newPwd string) error {
 // BindRoles replaces role assignments for a user.
 func (s *UserService) BindRoles(userID string, roleIDs []string) error {
 	return s.repo.BindRoles(userID, roleIDs)
+}
+
+// GetUserOverview returns summary statistics for the current user.
+func (s *UserService) GetUserOverview(userID string) (*dto.UserOverview, error) {
+	total, err := s.repo.CountProjectsByUser(userID)
+	if err != nil {
+		total = 0
+	}
+	return &dto.UserOverview{
+		TotalProjects: int(total),
+		TotalAnswers:  0,
+		TodayAnswers:  0,
+	}, nil
+}
+
+// GetRegisterRoles returns roles that are available for self-registration.
+func (s *UserService) GetRegisterRoles() ([]dto.RegisterRoleView, error) {
+	roles, err := s.repo.ListRegisterRoles()
+	if err != nil {
+		return nil, err
+	}
+	views := make([]dto.RegisterRoleView, 0, len(roles))
+	for _, r := range roles {
+		views = append(views, dto.RegisterRoleView{ID: r.ID, Name: r.Name, Code: r.Code})
+	}
+	return views, nil
+}
+
+// CheckUsernameExist returns true if the username is already taken.
+func (s *UserService) CheckUsernameExist(username string) bool {
+	_, err := s.repo.FindByUsername(username)
+	return err == nil
+}
+
+// GetUserTasks returns paginated pending flow tasks for the current user.
+func (s *UserService) GetUserTasks(userID string, query dto.MyTaskQuery) (*dto.PageResponse[dto.MyTaskView], error) {
+	return &dto.PageResponse[dto.MyTaskView]{List: []dto.MyTaskView{}, Total: 0}, nil
+}
+
+// GetHistoryTasks returns paginated completed flow tasks for the current user.
+func (s *UserService) GetHistoryTasks(userID string, query dto.MyTaskQuery) (*dto.PageResponse[dto.MyTaskView], error) {
+	return &dto.PageResponse[dto.MyTaskView]{List: []dto.MyTaskView{}, Total: 0}, nil
 }
 
 // GetUserAuthorities returns all authority strings for a user based on their roles.

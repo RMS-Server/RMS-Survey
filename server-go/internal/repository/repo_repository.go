@@ -14,6 +14,9 @@ func NewRepoRepository(db *gorm.DB) *RepoRepository {
 	return &RepoRepository{db: db}
 }
 
+// DB returns the underlying gorm.DB for use in transactions.
+func (r *RepoRepository) DB() *gorm.DB { return r.db }
+
 func (r *RepoRepository) List(name, category, mode string, offset, limit int) ([]model.Repo, int64, error) {
 	var items []model.Repo
 	var total int64
@@ -27,7 +30,9 @@ func (r *RepoRepository) List(name, category, mode string, offset, limit int) ([
 	if mode != "" {
 		q = q.Where("mode = ?", mode)
 	}
-	q.Count(&total)
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	err := q.Offset(offset).Limit(limit).Find(&items).Error
 	return items, total, err
 }
@@ -50,6 +55,43 @@ func (r *RepoRepository) Delete(id string) error {
 	return r.db.Where("id = ?", id).Delete(&model.Repo{}).Error
 }
 
+// BatchAddTemplates links template IDs to a repo.
+func (r *RepoRepository) BatchAddTemplates(repoID string, templateIDs []string) error {
+	for _, tid := range templateIDs {
+		rt := model.RepoTemplate{RepoID: repoID, TemplateID: tid}
+		if err := r.db.Where(model.RepoTemplate{RepoID: repoID, TemplateID: tid}).
+			FirstOrCreate(&rt).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RemoveTemplates unlinks template IDs from a repo.
+func (r *RepoRepository) RemoveTemplates(repoID string, templateIDs []string) error {
+	if len(templateIDs) == 0 {
+		return nil
+	}
+	return r.db.Where("repo_id = ? AND template_id IN ?", repoID, templateIDs).
+		Delete(&model.RepoTemplate{}).Error
+}
+
+// ListTemplatesByRepoID returns all templates belonging to a repo, optionally filtered by question types.
+func (r *RepoRepository) ListTemplatesByRepoID(repoID string, types []string) ([]model.Template, error) {
+	var items []model.Template
+	q := r.db.Where("repo_id = ?", repoID)
+	if len(types) > 0 {
+		q = q.Where("question_type IN ?", types)
+	}
+	err := q.Order("question_type ASC, create_at ASC").Find(&items).Error
+	return items, err
+}
+
+// CreateTemplate inserts a new template record.
+func (r *RepoRepository) CreateTemplate(t *model.Template) error {
+	return r.db.Create(t).Error
+}
+
 // UserBookRepository handles DB operations for user books.
 type UserBookRepository struct {
 	db *gorm.DB
@@ -69,7 +111,9 @@ func (r *UserBookRepository) List(repoID string, status *int, offset, limit int)
 	if status != nil {
 		q = q.Where("status = ?", *status)
 	}
-	q.Count(&total)
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	err := q.Offset(offset).Limit(limit).Find(&items).Error
 	return items, total, err
 }

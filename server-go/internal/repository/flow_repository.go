@@ -29,7 +29,9 @@ func (r *FlowRepository) ListAnswers(offset, limit int, status string) ([]model.
 	if status != "" {
 		q = q.Where("exam_exercise_type = ?", status)
 	}
-	q.Count(&total)
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	err := q.Offset(offset).Limit(limit).Find(&items).Error
 	return items, total, err
 }
@@ -60,4 +62,55 @@ func (r *FlowRepository) CountAnswersByStatus() (map[string]int64, error) {
 		m[r.Status] = r.Count
 	}
 	return m, nil
+}
+
+// SaveAnswer persists an answer record (insert or update).
+func (r *FlowRepository) SaveAnswer(a *model.Answer) error {
+	return r.db.Save(a).Error
+}
+
+// CreateFlowOperation inserts a new flow operation (approval history) record.
+func (r *FlowRepository) CreateFlowOperation(op *model.FlowOperation) error {
+	return r.db.Create(op).Error
+}
+
+// ListFlowOperations returns all operations for a process instance ordered by create_at asc.
+func (r *FlowRepository) ListFlowOperations(processInstanceID string) ([]model.FlowOperation, error) {
+	var ops []model.FlowOperation
+	err := r.db.Where("process_instance_id = ?", processInstanceID).
+		Order("create_at asc").
+		Find(&ops).Error
+	return ops, err
+}
+
+// CountAnswersByFlowStatus counts answers for the known flow status values.
+func (r *FlowRepository) CountAnswersByFlowStatus() (map[string]int64, error) {
+	type result struct {
+		Status string
+		Count  int64
+	}
+	var rows []result
+	err := r.db.Model(&model.Answer{}).
+		Select("exam_exercise_type as status, count(*) as count").
+		Where("exam_exercise_type IN ?", []string{"pending", "running", "approved", "rejected", "cancelled"}).
+		Group("exam_exercise_type").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]int64)
+	for _, r := range rows {
+		m[r.Status] = r.Count
+	}
+	return m, nil
+}
+
+// SaveProject persists a project record (insert or update).
+func (r *FlowRepository) SaveProject(p *model.Project) error {
+	return r.db.Save(p).Error
+}
+
+// DB exposes the underlying gorm.DB for transaction use.
+func (r *FlowRepository) DB() *gorm.DB {
+	return r.db
 }

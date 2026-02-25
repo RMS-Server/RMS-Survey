@@ -17,6 +17,10 @@ func NewProjectRepo(db *gorm.DB) *ProjectRepo {
 }
 
 // filterByDataPerm restricts query to projects the user owns or is a partner of.
+// This matches the Java DataPermAspect logic:
+//   1. Admin users bypass all filters (isAdmin check).
+//   2. Project owner: create_by = userId.
+//   3. Project partner: userId exists in t_project_partner for the project.
 func filterByDataPerm(db *gorm.DB, userInfo *dto.UserInfo) *gorm.DB {
 	if isAdmin(userInfo) {
 		return db

@@ -29,3 +29,18 @@ func (h *ExerciseHandler) List(c *gin.Context) {
 	}
 	response.OK(c, result)
 }
+
+// GetDetail returns the full detail view for a single exercise record.
+func (h *ExerciseHandler) GetDetail(c *gin.Context) {
+	id := c.Query("id")
+	if id == "" {
+		response.Fail(c, response.CodeError, "id is required")
+		return
+	}
+	result, err := h.svc.GetDetail(id)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result)
+}

@@ -26,3 +26,25 @@ func (r *DashboardRepository) List(projectID, key string) ([]model.Dashboard, er
 	err := q.Find(&items).Error
 	return items, err
 }
+
+// Create inserts a new dashboard record.
+func (r *DashboardRepository) Create(d *model.Dashboard) error {
+	return r.db.Create(d).Error
+}
+
+// Update saves all fields of an existing dashboard record.
+func (r *DashboardRepository) Update(d *model.Dashboard) error {
+	return r.db.Save(d).Error
+}
+
+// Delete soft-deletes a dashboard by ID.
+func (r *DashboardRepository) Delete(id string) error {
+	return r.db.Where("id = ?", id).Delete(&model.Dashboard{}).Error
+}
+
+// GetByID fetches a dashboard by primary key.
+func (r *DashboardRepository) GetByID(id string) (*model.Dashboard, error) {
+	var d model.Dashboard
+	err := r.db.Where("id = ?", id).First(&d).Error
+	return &d, err
+}
