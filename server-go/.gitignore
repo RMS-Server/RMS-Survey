@@ -1,0 +1,13 @@
+# Config files with secrets
+configs/
+
+# Go build artifacts
+surveyking
+server
+*.exe
+
+# Static files (built from frontend)
+static/
+
+# Uploads
+uploads/
