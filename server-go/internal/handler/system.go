@@ -104,6 +104,11 @@ func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
+	// Add RSA public key for login encryption
+	if h.userSvc != nil {
+		pubKey, _ := h.userSvc.GetRSAPublicKey()
+		info.PublicKey = pubKey
+	}
 	response.OK(c, info)
 }
 

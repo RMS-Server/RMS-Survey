@@ -9,7 +9,7 @@ import (
 	"github.com/surveyking/server/internal/pkg/response"
 )
 
-// publicPrefixes lists path prefixes that skip authentication.
+// publicPrefixes lists API path prefixes that skip authentication.
 var publicPrefixes = []string{
 	"/api/public/",
 	"/captcha/",
@@ -17,6 +17,11 @@ var publicPrefixes = []string{
 
 // isPublicPath returns true if the request path should bypass auth.
 func isPublicPath(method, path string) bool {
+	// Only /api/* paths need auth check
+	if !strings.HasPrefix(path, "/api/") && !strings.HasPrefix(path, "/captcha/") {
+		return true
+	}
+
 	for _, p := range publicPrefixes {
 		if strings.HasPrefix(path, p) {
 			return true
@@ -28,10 +33,6 @@ func isPublicPath(method, path string) bool {
 	}
 	// GET /api/file/** is public
 	if method == "GET" && strings.HasPrefix(path, "/api/file/") {
-		return true
-	}
-	// Root path
-	if path == "/" {
 		return true
 	}
 	return false

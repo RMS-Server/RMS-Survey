@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"log"
 	"strings"
 	"sync"
 
@@ -40,7 +41,7 @@ func NewUserService(repo *repository.UserRepo) *UserService {
 	return &UserService{repo: repo}
 }
 
-// GetRSAPublicKey returns the RSA public key, generating one if needed.
+// GetRSAPublicKey returns the RSA public key (raw base64, Java-compatible).
 func (s *UserService) GetRSAPublicKey() (string, error) {
 	rsaKeyCache.RLock()
 	if rsaKeyCache.loaded {
@@ -60,8 +61,14 @@ func (s *UserService) GetRSAPublicKey() (string, error) {
 	// Try loading from DB first
 	info, err := s.repo.FindSysInfoByName("rsa_private_key")
 	if err == nil {
-		rsaKeyCache.privateKey = info.Description
-		rsaKeyCache.publicKey = info.Setting
+		// Handle escaped newlines from DB storage
+		privKey := strings.ReplaceAll(info.Description, "\\n", "\n")
+		pubKeyStored := strings.ReplaceAll(info.Setting, "\\n", "\n")
+		// Convert to raw base64 if stored as PEM format
+		pubKey := rsapkg.ExtractPublicKeyBase64(pubKeyStored)
+		log.Printf("[DEBUG] Loaded RSA keys from DB, privKey len: %d, pubKey len: %d", len(privKey), len(pubKey))
+		rsaKeyCache.privateKey = privKey
+		rsaKeyCache.publicKey = pubKey
 		rsaKeyCache.loaded = true
 		return rsaKeyCache.publicKey, nil
 	}
@@ -79,6 +86,7 @@ func (s *UserService) GetRSAPublicKey() (string, error) {
 	rsaKeyCache.loaded = true
 
 	id, _ := nanoid.New()
+	// Store private key as PEM, public key as raw base64 (Java-compatible)
 	sysInfo := &model.SysInfo{
 		Name:        "rsa_private_key",
 		Description: priv,
@@ -105,6 +113,7 @@ func (s *UserService) RotateRSAKey() (string, error) {
 		return "", err
 	}
 	id, _ := nanoid.New()
+	// Store private key as PEM, public key as raw base64 (Java-compatible)
 	sysInfo := &model.SysInfo{
 		Name:        "rsa_private_key",
 		Description: priv,
@@ -136,24 +145,41 @@ func (s *UserService) getPrivateKey() (string, error) {
 // Login verifies credentials and returns the user on success.
 // encryptedPassword is RSA-encrypted (base64) or plaintext if RSA is unavailable.
 func (s *UserService) Login(username, encryptedPassword string) (*model.User, error) {
+	log.Printf("[DEBUG] Login attempt - username: %s, encryptedPassword len: %d", username, len(encryptedPassword))
+
+	// Print current public key for debugging
+	pubKey, _ := s.GetRSAPublicKey()
+	log.Printf("[DEBUG] Current public key (first 100 chars): %s", pubKey[:min(100, len(pubKey))])
+
 	account, err := s.repo.FindByUsername(username)
 	if err != nil {
+		log.Printf("[DEBUG] User not found: %v", err)
 		return nil, ErrInvalidCredentials
 	}
 
 	if account.Status != 1 {
+		log.Printf("[DEBUG] User disabled - status: %d", account.Status)
 		return nil, ErrUserDisabled
 	}
 
 	// Attempt RSA decryption; fall back to plaintext for non-encrypted clients.
 	password := encryptedPassword
-	if privKey, err := s.getPrivateKey(); err == nil && privKey != "" {
-		if decrypted, err := rsapkg.Decrypt(privKey, encryptedPassword); err == nil {
+	privKey, privKeyErr := s.getPrivateKey()
+	log.Printf("[DEBUG] Private key available: %v, len: %d", privKeyErr == nil, len(privKey))
+
+	if privKeyErr == nil && privKey != "" {
+		decrypted, decryptErr := rsapkg.Decrypt(privKey, encryptedPassword)
+		if decryptErr == nil {
 			password = decrypted
+			log.Printf("[DEBUG] RSA decryption successful, password len: %d", len(password))
+		} else {
+			log.Printf("[DEBUG] RSA decryption failed: %v", decryptErr)
 		}
 	}
 
+	log.Printf("[DEBUG] Comparing password hash, input password: %q, stored hash len: %d", password, len(account.AuthSecret))
 	if err := bcrypt.CompareHashAndPassword([]byte(account.AuthSecret), []byte(password)); err != nil {
+		log.Printf("[DEBUG] Password mismatch: %v", err)
 		return nil, ErrInvalidCredentials
 	}
 
@@ -161,6 +187,7 @@ func (s *UserService) Login(username, encryptedPassword string) (*model.User, er
 	if err != nil {
 		return nil, ErrUserNotFound
 	}
+	log.Printf("[DEBUG] Login successful for user: %s", user.Name)
 	return user, nil
 }
 

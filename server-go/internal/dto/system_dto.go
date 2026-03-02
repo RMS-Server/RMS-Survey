@@ -102,6 +102,7 @@ type CommDictItemRequest struct {
 // SysInfoView is the response DTO for system info.
 type SysInfoView struct {
 	model.SysInfo
+	PublicKey string `json:"publicKey,omitempty"`
 }
 
 // SysInfoRequest is used for updating system info.

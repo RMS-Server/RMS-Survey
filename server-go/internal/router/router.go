@@ -1,6 +1,8 @@
 package router
 
 import (
+	"os"
+
 	"github.com/gin-gonic/gin"
 	"github.com/surveyking/server/internal/config"
 	"github.com/surveyking/server/internal/handler"
@@ -17,6 +19,26 @@ func Setup(db *gorm.DB) *gin.Engine {
 
 	r.Use(corsMiddleware())
 	r.Use(middleware.Auth())
+
+	// Serve frontend static files
+	staticPath := "./static"
+	r.Static("/assets", staticPath+"/assets")
+	r.StaticFile("/favicon.ico", staticPath+"/favicon.ico")
+
+	// SPA fallback - serve index.html for non-API routes, try static files first
+	r.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		// Try to serve static file
+		if len(path) > 1 {
+			filePath := staticPath + path
+			if _, err := os.Stat(filePath); err == nil {
+				c.File(filePath)
+				return
+			}
+		}
+		// Fallback to index.html for SPA
+		c.File(staticPath + "/index.html")
+	})
 
 	// --- Repositories ---
 	systemRepo := repository.NewSystemRepo(db)
@@ -58,8 +80,11 @@ func Setup(db *gorm.DB) *gin.Engine {
 	reportH := handler.NewReportHandler(reportSvc)
 
 	// --- Route groups ---
+	// Public routes (no auth)
 	public := r.Group("/api/public")
 	captcha := r.Group("/captcha")
+
+	// Protected API routes
 	api := r.Group("/api")
 
 	// User routes (public + captcha + protected + root)
