@@ -150,3 +150,10 @@ func (r *ProjectRepo) CreatePartner(p *model.ProjectPartner) error {
 func (r *ProjectRepo) DeletePartner(id string) error {
 	return r.db.Delete(&model.ProjectPartner{}, "id = ?", id).Error
 }
+
+// ListPartnersAll returns all partners for a project without pagination.
+func (r *ProjectRepo) ListPartnersAll(projectID string) ([]model.ProjectPartner, error) {
+	var partners []model.ProjectPartner
+	err := r.db.Where("project_id = ?", projectID).Order("create_at ASC").Find(&partners).Error
+	return partners, err
+}

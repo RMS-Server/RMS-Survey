@@ -340,14 +340,13 @@ func (s *UserService) BindRoles(userID string, roleIDs []string) error {
 
 // GetUserOverview returns summary statistics for the current user.
 func (s *UserService) GetUserOverview(userID string) (*dto.UserOverview, error) {
-	total, err := s.repo.CountProjectsByUser(userID)
-	if err != nil {
-		total = 0
-	}
+	totalProjects, _ := s.repo.CountProjectsByUser(userID)
+	totalAnswers, _ := s.repo.CountAnswersByUser(userID)
+	todayAnswers, _ := s.repo.CountTodayAnswersByUser(userID)
 	return &dto.UserOverview{
-		TotalProjects: int(total),
-		TotalAnswers:  0,
-		TodayAnswers:  0,
+		TotalProjects: int(totalProjects),
+		TotalAnswers:  int(totalAnswers),
+		TodayAnswers:  int(todayAnswers),
 	}, nil
 }
 
@@ -368,6 +367,27 @@ func (s *UserService) GetRegisterRoles() ([]dto.RegisterRoleView, error) {
 func (s *UserService) CheckUsernameExist(username string) bool {
 	_, err := s.repo.FindByUsername(username)
 	return err == nil
+}
+
+// FindUserIDByUsername returns the user ID for the given auth_account (username).
+func (s *UserService) FindUserIDByUsername(username string) (string, error) {
+	account, err := s.repo.FindByUsername(username)
+	if err != nil {
+		return "", err
+	}
+	return account.UserID, nil
+}
+
+// GetSimpleUserByID returns a simplified user view by ID.
+func (s *UserService) GetSimpleUserByID(userID string) *dto.SimpleUserView {
+	user, err := s.repo.FindUserByID(userID)
+	if err != nil {
+		return nil
+	}
+	return &dto.SimpleUserView{
+		ID:   user.ID,
+		Name: user.Name,
+	}
 }
 
 // GetUserTasks returns paginated pending flow tasks for the current user.

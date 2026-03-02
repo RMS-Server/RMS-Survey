@@ -18,3 +18,9 @@ type UserInfo struct {
 	Username string   `json:"username"`
 	Roles    []string `json:"roles"`
 }
+
+// SimpleUserView is a simplified user view for nested responses.
+type SimpleUserView struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -162,12 +163,36 @@ func (h *AnswerHandler) Download(c *gin.Context) {
 	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
 }
 
-// Upload handles POST /api/answer/upload — attaches a file to an answer.
+// Upload handles POST /api/answer/upload — imports answers from an Excel file.
 func (h *AnswerHandler) Upload(c *gin.Context) {
-	var req dto.AnswerUploadRequest
-	if err := c.ShouldBind(&req); err != nil {
+	projectID := c.PostForm("projectId")
+	autoSchema := c.PostForm("autoSchema") == "true"
+	parentID := c.PostForm("parentId")
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		response.Fail(c, response.CodeError, "file is required")
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		response.Fail(c, response.CodeError, "failed to open file")
+		return
+	}
+	defer file.Close()
+
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		response.Fail(c, response.CodeError, "failed to read file")
+		return
+	}
+
+	result, err := h.svc.UploadAnswers(projectID, autoSchema, parentID, fileData, fileHeader.Filename, currentUser(c))
+	if err != nil {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	response.OK(c, dto.AnswerUploadView{FileID: req.FileID})
+
+	response.OK(c, result)
 }

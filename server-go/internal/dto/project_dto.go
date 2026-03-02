@@ -58,13 +58,14 @@ type ProjectPartnerRequest struct {
 
 // ProjectPartnerView is the response DTO for a project partner.
 type ProjectPartnerView struct {
-	ID        string `json:"id"`
-	ProjectID string `json:"projectId"`
-	UserID    string `json:"userId"`
-	UserName  string `json:"userName"`
-	GroupID   string `json:"groupId"`
-	Type      *int   `json:"type"`
-	Status    int    `json:"status"`
+	ID        string         `json:"id"`
+	ProjectID string         `json:"projectId"`
+	UserID    string         `json:"userId"`
+	UserName  string         `json:"userName"`
+	GroupID   string         `json:"groupId"`
+	Type      *int           `json:"type"`
+	Status    int            `json:"status"`
+	User      *SimpleUserView `json:"user,omitempty"`
 }
 
 // SelectUserRequest is used by the editor to search for users.

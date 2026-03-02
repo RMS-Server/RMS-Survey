@@ -100,3 +100,11 @@ func (r *AnswerRepo) ListByProjectID(projectID string) ([]model.Answer, error) {
 		Order("create_at ASC").Find(&answers).Error
 	return answers, err
 }
+
+// CreateAnswers inserts multiple answers in a batch.
+func (r *AnswerRepo) CreateAnswers(answers []model.Answer) error {
+	if len(answers) == 0 {
+		return nil
+	}
+	return r.db.Create(&answers).Error
+}

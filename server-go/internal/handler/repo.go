@@ -99,8 +99,17 @@ func (h *RepoHandler) Unbind(c *gin.Context) {
 }
 
 func (h *RepoHandler) Pick(c *gin.Context) {
-	// Returns empty list — random question picking requires full schema logic
-	response.OK(c, []interface{}{})
+	var conditions []dto.RandomSurveyCondition
+	if err := c.ShouldBindJSON(&conditions); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	result, err := h.svc.PickQuestions(conditions)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result)
 }
 
 func (h *RepoHandler) Import(c *gin.Context) {

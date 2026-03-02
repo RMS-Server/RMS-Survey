@@ -207,6 +207,27 @@ func (s *ProjectService) RemovePartner(req *dto.ProjectPartnerRequest) error {
 	return s.repo.DeletePartner(req.ID)
 }
 
+// ListPartnersAll returns all partners for a project without pagination.
+func (s *ProjectService) ListPartnersAll(projectID string) ([]dto.ProjectPartnerView, error) {
+	partners, err := s.repo.ListPartnersAll(projectID)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]dto.ProjectPartnerView, 0, len(partners))
+	for _, p := range partners {
+		views = append(views, dto.ProjectPartnerView{
+			ID:        p.ID,
+			ProjectID: p.ProjectID,
+			UserID:    p.UserID,
+			UserName:  p.UserName,
+			GroupID:   p.GroupID,
+			Type:      p.Type,
+			Status:    p.Status,
+		})
+	}
+	return views, nil
+}
+
 func toProjectView(p model.Project) dto.ProjectView {
 	return dto.ProjectView{
 		ID:        p.ID,

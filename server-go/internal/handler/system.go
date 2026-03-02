@@ -525,9 +525,20 @@ func (h *SystemHandler) GetAISetting(c *gin.Context) {
 	response.OK(c, info)
 }
 
-// PermissionDiff is a no-op stub (compares DB vs code permissions).
+// PermissionDiff returns permissions defined in code that are not yet in the DB.
+// This is a simplified implementation returning the static permission set.
 func (h *SystemHandler) PermissionDiff(c *gin.Context) {
-	c.Status(http.StatusOK)
+	perms := []dto.PermissionView{
+		{Code: "system:role:list", Name: "Role List", Module: "system"},
+		{Code: "system:role:create", Name: "Role Create", Module: "system"},
+		{Code: "system:role:update", Name: "Role Update", Module: "system"},
+		{Code: "system:role:delete", Name: "Role Delete", Module: "system"},
+		{Code: "system:user:list", Name: "User List", Module: "system"},
+		{Code: "system:user:create", Name: "User Create", Module: "system"},
+		{Code: "system:user:update", Name: "User Update", Module: "system"},
+		{Code: "system:user:delete", Name: "User Delete", Module: "system"},
+	}
+	response.OK(c, perms)
 }
 
 // CheckUsernameExist returns true if the username is already taken.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	mathrand "math/rand"
 	"mime/multipart"
 	"strings"
 	"time"
@@ -181,6 +182,34 @@ func (s *RepoService) BatchCreate(req dto.RepoTemplateRequest) error {
 // Unbind removes template IDs from a repo.
 func (s *RepoService) Unbind(req dto.RepoTemplateRequest) error {
 	return s.repoRepo.RemoveTemplates(req.RepoID, req.TemplateIDs)
+}
+
+// PickQuestions randomly selects questions from a repo based on conditions.
+func (s *RepoService) PickQuestions(conditions []dto.RandomSurveyCondition) ([]interface{}, error) {
+	result := make([]interface{}, 0)
+	for _, cond := range conditions {
+		if cond.RepoID == "" {
+			continue
+		}
+		items, err := s.repoRepo.ListTemplatesByRepoID(cond.RepoID, cond.Types)
+		if err != nil {
+			continue
+		}
+		picked := make([]model.Template, len(items))
+		copy(picked, items)
+		// Fisher-Yates shuffle
+		for i := len(picked) - 1; i > 0; i-- {
+			j := mathrand.Intn(i + 1)
+			picked[i], picked[j] = picked[j], picked[i]
+		}
+		if cond.QuestionsNum > 0 && cond.QuestionsNum < len(picked) {
+			picked = picked[:cond.QuestionsNum]
+		}
+		for _, item := range picked {
+			result = append(result, item)
+		}
+	}
+	return result, nil
 }
 
 // templateSchema is the per-question JSON stored in t_template.template column.

@@ -19,6 +19,7 @@ import (
 	"github.com/surveyking/server/internal/pkg/response"
 	"github.com/surveyking/server/internal/repository"
 	"github.com/surveyking/server/internal/service"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -305,9 +306,68 @@ func (h *UserHandler) ListRegisterRoles(c *gin.Context) {
 	response.OK(c, roles)
 }
 
-// ImportUser handles POST /importUser
+// ImportUser handles POST /importUser — reads an Excel file and bulk-creates users.
 func (h *UserHandler) ImportUser(c *gin.Context) {
-	// Stub: import from uploaded file not yet implemented
+	fh, err := c.FormFile("file")
+	if err != nil {
+		response.Fail(c, response.CodeError, "missing file: "+err.Error())
+		return
+	}
+	f, err := fh.Open()
+	if err != nil {
+		response.Fail(c, response.CodeError, "open file: "+err.Error())
+		return
+	}
+	defer f.Close()
+
+	xlsx, err := excelize.OpenReader(f)
+	if err != nil {
+		response.Fail(c, response.CodeError, "parse excel: "+err.Error())
+		return
+	}
+	defer xlsx.Close()
+
+	sheetName := xlsx.GetSheetName(0)
+	rows, err := xlsx.GetRows(sheetName)
+	if err != nil {
+		response.Fail(c, response.CodeError, "read rows: "+err.Error())
+		return
+	}
+
+	cell := func(row []string, idx int) string {
+		if idx < len(row) {
+			return row[idx]
+		}
+		return ""
+	}
+
+	for i, row := range rows {
+		if i == 0 {
+			continue // skip header
+		}
+		name := cell(row, 0)
+		if name == "" {
+			continue // skip blank rows
+		}
+		username := cell(row, 1)
+		if username == "" {
+			username = name
+		}
+		password := cell(row, 2)
+		if password == "" {
+			password = "123456"
+		}
+		req := dto.CreateUserRequest{
+			Name:     name,
+			Username: username,
+			Password: password,
+			Phone:    cell(row, 3),
+			Email:    cell(row, 4),
+			Status:   1,
+		}
+		_ = h.svc.CreateUser(req) // continue on error
+	}
+
 	response.OK(c, nil)
 }
 

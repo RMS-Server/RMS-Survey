@@ -1,11 +1,15 @@
 package handler
 
 import (
+	"bytes"
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/surveyking/server/internal/dto"
 	"github.com/surveyking/server/internal/pkg/response"
 	"github.com/surveyking/server/internal/repository"
 	"github.com/surveyking/server/internal/service"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -221,14 +225,124 @@ func (h *ProjectHandler) RemovePartner(c *gin.Context) {
 	response.OK(c, nil)
 }
 
-// DownloadPartner returns a stub Excel file of project partners.
+// DownloadPartner exports project partners to an Excel file.
 func (h *ProjectHandler) DownloadPartner(c *gin.Context) {
+	projectID := c.Query("projectId")
+	if projectID == "" {
+		response.Fail(c, response.CodeError, "projectId is required")
+		return
+	}
+
+	partners, err := h.svc.ListPartnersAll(projectID)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+
+	f := excelize.NewFile()
+	defer f.Close()
+	sheet := "Sheet1"
+
+	// Set headers
+	f.SetCellValue(sheet, "A1", "名单")
+	f.SetCellValue(sheet, "B1", "状态")
+
+	// Status mapping based on Java AppConsts.ProjectPartnerStatus
+	statusMap := map[int]string{
+		0: "未答题",
+		1: "已答题",
+		2: "已通过",
+		3: "未通过",
+	}
+
+	// Write data rows
+	for i, p := range partners {
+		row := i + 2
+		// For RESPONDENT_SYS_USER type (type=1), show user name from user table
+		// For RESPONDENT_IMP_USER type (type=2), show userName field directly
+		if p.Type != nil && *p.Type == 1 && p.UserID != "" {
+			user := h.userSvc.GetSimpleUserByID(p.UserID)
+			if user != nil {
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", row), user.Name)
+			} else {
+				f.SetCellValue(sheet, fmt.Sprintf("A%d", row), p.UserName)
+			}
+		} else {
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", row), p.UserName)
+		}
+		statusStr, ok := statusMap[p.Status]
+		if !ok {
+			statusStr = fmt.Sprintf("%d", p.Status)
+		}
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), statusStr)
+	}
+
+	// Set column widths
+	f.SetColWidth(sheet, "A", "A", 30)
+	f.SetColWidth(sheet, "B", "B", 15)
+
+	buf := new(bytes.Buffer)
+	if err := f.Write(buf); err != nil {
+		response.Fail(c, response.CodeError, "failed to generate Excel: "+err.Error())
+		return
+	}
+
 	c.Header("Content-Disposition", `attachment; filename="partners.xlsx"`)
-	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", []byte("PK\x03\x04"))
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 }
 
-// ImportPartner is a stub for importing project partners from a file.
+// ImportPartner imports project partners from an uploaded Excel file.
+// The Excel must have a header row; column 0 is the username.
 func (h *ProjectHandler) ImportPartner(c *gin.Context) {
+	projectID := c.Query("projectId")
+	if projectID == "" {
+		response.Fail(c, response.CodeError, "projectId is required")
+		return
+	}
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		response.Fail(c, response.CodeError, "file is required")
+		return
+	}
+	f, err := fileHeader.Open()
+	if err != nil {
+		response.Fail(c, response.CodeError, "failed to open file")
+		return
+	}
+	defer f.Close()
+
+	xlsx, err := excelize.OpenReader(f)
+	if err != nil {
+		response.Fail(c, response.CodeError, "failed to parse Excel: "+err.Error())
+		return
+	}
+	defer xlsx.Close()
+
+	sheets := xlsx.GetSheetList()
+	if len(sheets) == 0 {
+		response.OK(c, nil)
+		return
+	}
+	rows, err := xlsx.GetRows(sheets[0])
+	if err != nil {
+		response.Fail(c, response.CodeError, "failed to read rows: "+err.Error())
+		return
+	}
+
+	for i, row := range rows {
+		if i == 0 || len(row) == 0 || row[0] == "" {
+			continue
+		}
+		username := row[0]
+		userID, err := h.userSvc.FindUserIDByUsername(username)
+		if err != nil {
+			continue
+		}
+		_ = h.svc.AddPartner(&dto.ProjectPartnerRequest{
+			ProjectID: projectID,
+			UserID:    userID,
+		}, currentUser(c))
+	}
 	response.OK(c, nil)
 }
 

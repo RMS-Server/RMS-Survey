@@ -13,15 +13,37 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// uploadSurveySchema represents the survey structure for Excel import.
+// It uses Pages structure for compatibility with export function.
+type uploadSurveySchema struct {
+	ID    string                   `json:"id,omitempty"`
+	Title string                   `json:"title,omitempty"`
+	Pages []uploadSurveyPage       `json:"pages,omitempty"`
+}
+
+// uploadSurveyElement represents a question element for Excel import.
+type uploadSurveyElement struct {
+	ID       string                `json:"id"`
+	Title    string                `json:"title"`
+	Type     string                `json:"type"`
+	Children []uploadSurveyElement `json:"children,omitempty"`
+}
+
+// uploadSurveyPage represents a page in the survey for Excel import.
+type uploadSurveyPage struct {
+	Elements []uploadSurveyElement `json:"elements"`
+}
+
 // AnswerService handles business logic for answers.
 type AnswerService struct {
 	repo        *repository.AnswerRepo
 	projectRepo *repository.ProjectRepo
+	projectSvc  *ProjectService
 }
 
 // NewAnswerService creates a new AnswerService.
 func NewAnswerService(repo *repository.AnswerRepo, projectRepo *repository.ProjectRepo) *AnswerService {
-	return &AnswerService{repo: repo, projectRepo: projectRepo}
+	return &AnswerService{repo: repo, projectRepo: projectRepo, projectSvc: NewProjectService(projectRepo)}
 }
 
 // ListAnswers returns a paginated list of answers.
@@ -268,4 +290,231 @@ func toAnswerView(a model.Answer) dto.AnswerView {
 		CreatedAt: a.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: a.UpdatedAt.Format(time.RFC3339),
 	}
+}
+
+// UploadAnswers parses an Excel file and imports answers.
+// If projectId is provided, it matches Excel columns to existing survey questions.
+// If autoSchema is true, it creates a new project based on the Excel header.
+func (s *AnswerService) UploadAnswers(projectID string, autoSchema bool, parentID string, fileData []byte, filename string, userInfo *dto.UserInfo) (*dto.AnswerImportResult, error) {
+	f, err := excelize.OpenReader(bytes.NewReader(fileData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Excel: %w", err)
+	}
+	defer f.Close()
+
+	sheets := f.GetSheetList()
+	if len(sheets) == 0 {
+		return nil, fmt.Errorf("Excel file has no sheets")
+	}
+	sheet := sheets[0]
+	rows, err := f.GetRows(sheet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read rows: %w", err)
+	}
+	if len(rows) < 2 {
+		return nil, fmt.Errorf("Excel must have at least a header row and one data row")
+	}
+
+	// Extract name from filename (without extension)
+	name := filename
+	if idx := len(filename) - 1; idx > 0 {
+		for i := idx; i >= 0; i-- {
+			if filename[i] == '.' {
+				name = filename[:i]
+				break
+			}
+		}
+	}
+
+	headerRow := rows[0]
+	var schema uploadSurveySchema
+	var resultProjectID string
+
+	if projectID != "" {
+		// Use existing project - filter schema by Excel columns
+		project, err := s.projectRepo.GetProject(projectID)
+		if err != nil {
+			return nil, fmt.Errorf("get project: %w", err)
+		}
+		resultProjectID = projectID
+
+		var existingSchema uploadSurveySchema
+		if project.Survey != "" {
+			if err := json.Unmarshal([]byte(project.Survey), &existingSchema); err != nil {
+				return nil, fmt.Errorf("parse survey schema: %w", err)
+			}
+		}
+
+		// Build question map for quick lookup by title
+		questionMap := make(map[string]uploadSurveyElement)
+		for _, page := range existingSchema.Pages {
+			for _, el := range page.Elements {
+				questionMap[el.Title] = el
+			}
+		}
+
+		// Filter schema: only include questions that match Excel columns
+		// Build a single page with matching elements
+		schema.ID = existingSchema.ID
+		var elements []uploadSurveyElement
+		for _, title := range headerRow {
+			if el, ok := questionMap[title]; ok {
+				elements = append(elements, el)
+			} else {
+				// Create placeholder element for unmatched column
+				id, _ := nanoid.New()
+				childID, _ := nanoid.New()
+				elements = append(elements, uploadSurveyElement{
+					ID:    id,
+					Title: title,
+					Type:  "fillBlank",
+					Children: []uploadSurveyElement{{ID: childID}},
+				})
+			}
+		}
+		schema.Pages = []uploadSurveyPage{{Elements: elements}}
+	} else if autoSchema {
+		// Create new project from Excel header
+		schema = createSurveyFromExcelHeader(headerRow)
+		schema.Title = name
+
+		setting := `{"mode":"survey","status":1}`
+		id, _ := nanoid.New()
+		p := &model.Project{
+			BaseModel: model.BaseModel{ID: id, CreateBy: userInfo.UserID},
+			ParentID:  parentID,
+			Name:      name,
+			Survey:    mustMarshalJSON(schema),
+			Setting:   setting,
+			Mode:      "survey",
+			Status:    1,
+			Priority:  1000,
+		}
+		if err := s.projectRepo.CreateProject(p); err != nil {
+			return nil, fmt.Errorf("create project: %w", err)
+		}
+		resultProjectID = id
+	} else {
+		return nil, fmt.Errorf("either projectId or autoSchema must be provided")
+	}
+
+	// Parse data rows into answers
+	// Get elements from the first page
+	var elements []uploadSurveyElement
+	if len(schema.Pages) > 0 {
+		elements = schema.Pages[0].Elements
+	}
+
+	answers := make([]model.Answer, 0, len(rows)-1)
+	for rowIdx, row := range rows {
+		if rowIdx == 0 {
+			continue // skip header
+		}
+
+		answerMap := make(map[string]interface{})
+		for colIdx, title := range headerRow {
+			if colIdx >= len(row) {
+				continue
+			}
+			cellValue := row[colIdx]
+			if cellValue == "" {
+				continue
+			}
+
+			// Find the question element for this column
+			var questionID, optionID string
+			for _, el := range elements {
+				if el.Title == title {
+					questionID = el.ID
+					if len(el.Children) > 0 {
+						optionID = el.Children[0].ID
+					}
+					break
+				}
+			}
+
+			if questionID == "" {
+				continue
+			}
+
+			if optionID == "" {
+				optionID = questionID
+			}
+
+			// Store answer as map[optionID]value format for compatibility with Java backend
+			answerMap[questionID] = map[string]string{optionID: cellValue}
+		}
+
+		if len(answerMap) == 0 {
+			continue // skip empty rows
+		}
+
+		id, _ := nanoid.New()
+		answerJSON, _ := json.Marshal(answerMap)
+		answers = append(answers, model.Answer{
+			BaseModel: model.BaseModel{
+				ID:       id,
+				CreateBy: userInfo.UserID,
+			},
+			ProjectID: resultProjectID,
+			Answer:    string(answerJSON),
+		})
+	}
+
+	if len(answers) > 0 {
+		if err := s.repo.CreateAnswers(answers); err != nil {
+			return nil, fmt.Errorf("save answers: %w", err)
+		}
+	}
+
+	schemaJSON, _ := json.Marshal(schema)
+	return &dto.AnswerImportResult{
+		ProjectID: resultProjectID,
+		Schema:    schemaJSON,
+	}, nil
+}
+
+// createSurveyFromExcelHeader creates a survey schema from Excel header row.
+// Uses Pages structure for compatibility with export function.
+func createSurveyFromExcelHeader(headers []string) uploadSurveySchema {
+	var elements []uploadSurveyElement
+	usedIDs := make(map[string]bool)
+
+	for _, title := range headers {
+		id := generateNanoID(8, usedIDs) // Use 8 chars for better uniqueness
+		childID := generateNanoID(8, usedIDs)
+		elements = append(elements, uploadSurveyElement{
+			ID:       id,
+			Title:    title,
+			Type:     "fillBlank",
+			Children: []uploadSurveyElement{{ID: childID}},
+		})
+	}
+
+	return uploadSurveySchema{
+		Pages: []uploadSurveyPage{{Elements: elements}},
+	}
+}
+
+// generateNanoID generates a unique nano ID of specified length.
+func generateNanoID(length int, used map[string]bool) string {
+	for {
+		id, _ := nanoid.New()
+		if len(id) > length {
+			id = id[:length]
+		}
+		if !used[id] {
+			used[id] = true
+			return id
+		}
+	}
+}
+
+// mustMarshalJSON marshals to JSON or returns empty object on error.
+func mustMarshalJSON(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
 }

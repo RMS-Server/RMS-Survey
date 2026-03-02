@@ -71,3 +71,13 @@ type UserBookRequest struct {
 	Status     *int   `json:"status"`
 	IsMarked   *int8  `json:"isMarked"`
 }
+
+// RandomSurveyCondition holds conditions for random question picking from a repo.
+type RandomSurveyCondition struct {
+	ID           string   `json:"id"`
+	RepoID       string   `json:"repoId"`
+	QuestionsNum int      `json:"questionsNum"`
+	ExamScore    float64  `json:"examScore"`
+	Tags         []string `json:"tags"`
+	Types        []string `json:"types"`
+}

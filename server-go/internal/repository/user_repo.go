@@ -5,6 +5,7 @@ import (
 	"github.com/surveyking/server/internal/dto"
 	"github.com/surveyking/server/internal/model"
 	"gorm.io/gorm"
+	"time"
 )
 
 // UserRepo handles all user-related database operations.
@@ -179,7 +180,7 @@ func (r *UserRepo) DeleteSysInfoByName(name string) error {
 // CountProjectsByUser counts projects created by the given user.
 func (r *UserRepo) CountProjectsByUser(userID string) (int64, error) {
 	var count int64
-	err := r.db.Model(&model.Project{}).Where("create_by = ? AND deleted_at IS NULL", userID).Count(&count).Error
+	err := r.db.Model(&model.Project{}).Where("create_by = ?", userID).Count(&count).Error
 	return count, err
 }
 
@@ -240,6 +241,23 @@ func (r *UserRepo) UpdateUserPosition(userID, deptID string, positionIDs []strin
 		}
 		return nil
 	})
+}
+
+// CountAnswersByUser counts total answers created by the given user.
+func (r *UserRepo) CountAnswersByUser(userID string) (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Answer{}).Where("create_by = ?", userID).Count(&count).Error
+	return count, err
+}
+
+// CountTodayAnswersByUser counts answers created today by the given user.
+func (r *UserRepo) CountTodayAnswersByUser(userID string) (int64, error) {
+	var count int64
+	today := time.Now().Format("2006-01-02")
+	err := r.db.Model(&model.Answer{}).
+		Where("create_by = ? AND DATE(create_at) = ?", userID, today).
+		Count(&count).Error
+	return count, err
 }
 
 // nanoid generates a new random ID using the DB connection (uses uuid as fallback).

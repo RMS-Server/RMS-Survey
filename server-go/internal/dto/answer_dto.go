@@ -40,3 +40,9 @@ type DownloadQuery struct {
 	ProjectID string `json:"projectId" form:"projectId"`
 	Locale    string `json:"locale" form:"locale"`
 }
+
+// AnswerImportResult is the response for answer Excel import.
+type AnswerImportResult struct {
+	ProjectID string          `json:"projectId,omitempty"`
+	Schema    json.RawMessage `json:"schema,omitempty"`
+}

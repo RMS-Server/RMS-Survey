@@ -82,27 +82,30 @@ func Setup(db *gorm.DB) *gin.Engine {
 	systemGrp := api.Group("/system")
 	systemH.RegisterRoutes(systemGrp)
 
-	// Flow routes
-	flowGrp := api.Group("/flow")
-	{
-		flowGrp.GET("", flowH.GetFlow)
-		flowGrp.POST("/save", flowH.SaveFlow)
-		flowGrp.POST("/deploy", flowH.Deploy)
-		flowGrp.GET("/auditRecord", flowH.GetAuditRecord)
-		flowGrp.GET("/tasks", flowH.GetFlowTasks)
-		flowGrp.GET("/revertNodes", flowH.GetRevertNodes)
-		flowGrp.POST("/approvalTask", flowH.ApprovalTask)
-		flowGrp.GET("/statics", flowH.Statics)
-		flowGrp.GET("/getTaskInfo", flowH.GetTaskInfo)
-		flowGrp.GET("/loadSchema", flowH.LoadSchema)
+	// Flow routes — /api/flow (legacy) and /api/workflow (Java-aligned)
+	registerFlowRoutes := func(grp *gin.RouterGroup) {
+		grp.GET("", flowH.GetFlow)
+		grp.POST("/save", flowH.SaveFlow)
+		grp.POST("/deploy", flowH.Deploy)
+		grp.GET("/auditRecord", flowH.GetAuditRecord)
+		grp.GET("/tasks", flowH.GetFlowTasks)
+		grp.GET("/revertNodes", flowH.GetRevertNodes)
+		grp.POST("/approvalTask", flowH.ApprovalTask)
+		grp.GET("/statics", flowH.Statics)
+		grp.GET("/getTaskInfo", flowH.GetTaskInfo)
+		grp.GET("/loadSchema", flowH.LoadSchema)
 	}
+	registerFlowRoutes(api.Group("/flow"))
+	registerFlowRoutes(api.Group("/workflow"))
 
 	// AI chat routes
 	aiGrp := api.Group("/ai/chat")
 	{
 		aiGrp.GET("/models", aiH.GetModels)
 		aiGrp.POST("/conversation", aiH.CreateConversation)
+		aiGrp.POST("/create-conversation", aiH.CreateConversation) // Java-aligned alias
 		aiGrp.POST("/conversation/close", aiH.CloseConversation)
+		aiGrp.POST("/close-conversation", aiH.CloseConversation) // Java-aligned alias
 		aiGrp.GET("/stream", aiH.Stream)
 	}
 
