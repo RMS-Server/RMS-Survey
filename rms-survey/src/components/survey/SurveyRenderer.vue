@@ -18,32 +18,43 @@
           <RadioElement
             v-if="element.type === 'radio'"
             :element="element"
-            :value="answers[element.id] as string"
-            @update:value="answers[element.id] = $event"
+            :value="internalAnswers[element.id]?.value as string"
+            @update:value="internalAnswers[element.id]!.value = $event"
           />
           <CheckboxElement
             v-else-if="element.type === 'checkbox'"
             :element="element"
-            :value="answers[element.id] as string[]"
-            @update:value="answers[element.id] = $event"
+            :value="internalAnswers[element.id]?.value as string[]"
+            @update:value="internalAnswers[element.id]!.value = $event"
           />
           <FillBlankElement
             v-else-if="element.type === 'fillBlank'"
             :element="element"
-            :value="answers[element.id] as string"
-            @update:value="answers[element.id] = $event"
+            :value="internalAnswers[element.id]?.value as string"
+            @update:value="internalAnswers[element.id]!.value = $event"
           />
           <DropdownElement
             v-else-if="element.type === 'dropdown'"
             :element="element"
-            :value="answers[element.id] as string"
-            @update:value="answers[element.id] = $event"
+            :value="internalAnswers[element.id]?.value as string"
+            @update:value="internalAnswers[element.id]!.value = $event"
           />
           <RatingElement
             v-else-if="element.type === 'rating'"
             :element="element"
-            :value="answers[element.id] as number"
-            @update:value="answers[element.id] = $event"
+            :value="internalAnswers[element.id]?.value as number"
+            @update:value="internalAnswers[element.id]!.value = $event"
+          />
+        </div>
+
+        <!-- Attachment upload area -->
+        <div v-if="getAttachmentConfig(element) && !preview" class="question-attachment">
+          <AttachmentUpload
+            :project-id="projectId || ''"
+            :question-id="element.id"
+            :config="element.attachment!"
+            :model-value="internalAnswers[element.id]?.attachments || []"
+            @update:model-value="internalAnswers[element.id]!.attachments = $event"
           />
         </div>
       </div>
@@ -57,31 +68,54 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
-import type { SurveySchema } from '@/types/survey'
+import { ref, watch } from 'vue'
+import type { SurveySchema, SurveyElement, AttachmentConfig, AnswerValue } from '@/types/survey'
 import RadioElement from './elements/RadioElement.vue'
 import CheckboxElement from './elements/CheckboxElement.vue'
 import FillBlankElement from './elements/FillBlankElement.vue'
 import DropdownElement from './elements/DropdownElement.vue'
 import RatingElement from './elements/RatingElement.vue'
+import AttachmentUpload from './AttachmentUpload.vue'
 
-defineProps<{
+const props = defineProps<{
   survey: SurveySchema
   answers: Record<string, unknown>
   preview?: boolean
+  projectId?: string
 }>()
 
 const emit = defineEmits<{
-  (e: 'submit'): void
-  (e: 'tempSave'): void
+  (e: 'submit', answers: Record<string, AnswerValue>): void
+  (e: 'tempSave', answers: Record<string, AnswerValue>): void
 }>()
 
+// Internal answers with attachment support
+const internalAnswers = ref<Record<string, AnswerValue>>({})
+
+// Initialize from props
+watch(() => props.answers, (val) => {
+  const converted: Record<string, AnswerValue> = {}
+  for (const [key, value] of Object.entries(val)) {
+    if (typeof value === 'object' && value !== null && 'value' in value) {
+      converted[key] = value as AnswerValue
+    } else {
+      converted[key] = { value: value as string | string[] | number | null, attachments: [] }
+    }
+  }
+  internalAnswers.value = converted
+}, { immediate: true, deep: true })
+
+// Get attachment config for an element
+function getAttachmentConfig(element: SurveyElement): AttachmentConfig | undefined {
+  return element.attachment?.enabled ? element.attachment : undefined
+}
+
 function handleSubmit() {
-  emit('submit')
+  emit('submit', internalAnswers.value)
 }
 
 function handleTempSave() {
-  emit('tempSave')
+  emit('tempSave', internalAnswers.value)
 }
 </script>
 
@@ -130,6 +164,12 @@ function handleTempSave() {
 
 .question-content {
   margin-top: 8px;
+}
+
+.question-attachment {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #e8e8e8;
 }
 
 .survey-actions {

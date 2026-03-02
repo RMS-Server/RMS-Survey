@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"path/filepath"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rms-survey/server/internal/dto"
 	"github.com/rms-survey/server/internal/pkg/response"
@@ -41,6 +43,7 @@ func (h *SurveyHandler) RegisterRoutes(public, survey gin.IRouter) {
 	public.POST("/saveAnswer", h.SaveAnswer)
 	public.POST("/tempSaveAnswer", h.TempSaveAnswer)
 	public.POST("/upload", h.Upload)
+	public.POST("/uploadAttachment", h.UploadAttachment)
 	public.GET("/preview/:attachmentId", h.Preview)
 	public.POST("/loadQuery", h.LoadQuery)
 	public.POST("/getQueryResult", h.GetQueryResult)
@@ -145,6 +148,58 @@ func (h *SurveyHandler) Upload(c *gin.Context) {
 		return
 	}
 	response.OK(c, result)
+}
+
+// UploadAttachment handles question-specific attachment upload with validation.
+func (h *SurveyHandler) UploadAttachment(c *gin.Context) {
+	if h.fileSvc == nil {
+		response.Fail(c, response.CodeError, "file service not available")
+		return
+	}
+
+	projectID := c.PostForm("projectId")
+	questionID := c.PostForm("questionId")
+	if projectID == "" || questionID == "" {
+		response.Fail(c, response.CodeError, "projectId and questionId required")
+		return
+	}
+
+	fh, err := c.FormFile("file")
+	if err != nil {
+		response.Fail(c, response.CodeError, "missing file: "+err.Error())
+		return
+	}
+
+	// Get project to find question attachment config
+	project, err := h.svc.GetProjectByID(projectID)
+	if err != nil {
+		response.Fail(c, response.CodeError, "project not found")
+		return
+	}
+
+	// Parse survey schema to find question config
+	cfg := h.svc.GetQuestionAttachmentConfig(project, questionID)
+
+	// Validate and upload
+	f, err := fh.Open()
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	defer f.Close()
+
+	view, err := h.fileSvc.UploadWithValidation(fh.Filename, fh.Size, f, cfg)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+
+	response.OK(c, &dto.AttachmentInfo{
+		FileID:   view.ID,
+		FileName: view.OriginalName,
+		FileSize: fh.Size,
+		FileType: filepath.Ext(view.OriginalName),
+	})
 }
 
 func (h *SurveyHandler) Preview(c *gin.Context) {

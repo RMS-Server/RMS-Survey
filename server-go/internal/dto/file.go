@@ -31,3 +31,23 @@ type AnswerUploadRequest struct {
 type AnswerUploadView struct {
 	FileID string `json:"fileId"`
 }
+
+// UploadConfig for validation during upload
+type UploadConfig struct {
+	MaxSize      int64
+	AllowedTypes []string
+}
+
+// AttachmentUploadRequest for question attachment upload
+type AttachmentUploadRequest struct {
+	ProjectID  string `form:"projectId"`
+	QuestionID string `form:"questionId"`
+}
+
+// AttachmentInfo returned after attachment upload
+type AttachmentInfo struct {
+	FileID   string `json:"fileId"`
+	FileName string `json:"fileName"`
+	FileSize int64  `json:"fileSize"`
+	FileType string `json:"fileType"`
+}

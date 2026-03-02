@@ -14,6 +14,7 @@
         <SurveyRenderer
           :survey="surveySchema"
           :answers="answers"
+          :project-id="surveyId"
           @submit="handleSubmit"
           @temp-save="handleTempSave"
         />

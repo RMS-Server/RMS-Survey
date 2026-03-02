@@ -1,9 +1,11 @@
 package service
 
 import (
+	"fmt"
 	"io"
 	"mime"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +14,21 @@ import (
 	"github.com/rms-survey/server/internal/pkg/storage"
 	"github.com/rms-survey/server/internal/repository"
 )
+
+// dangerousExtensions contains file extensions that are never allowed for upload.
+var dangerousExtensions = map[string]bool{
+	".exe": true, ".bat": true, ".cmd": true, ".sh": true,
+	".php": true, ".jsp": true, ".asp": true, ".aspx": true,
+	".com": true, ".pif": true, ".application": true,
+	".gadget": true, ".msi": true, ".msp": true, ".scr": true,
+	".hta": true, ".cpl": true, ".msc": true, ".jar": true,
+}
+
+// UploadValidationConfig defines rules for file upload validation.
+type UploadValidationConfig struct {
+	MaxSize      int64
+	AllowedTypes []string
+}
 
 // FileService handles file upload/download business logic.
 type FileService struct {
@@ -49,6 +66,45 @@ func (s *FileService) Upload(filename string, data io.Reader) (*dto.FileView, er
 		FilePath:     f.FilePath,
 		StorageType:  f.StorageType,
 	}, nil
+}
+
+// ValidateUpload checks if the file is allowed based on extension and size.
+// Returns an error if validation fails.
+func (s *FileService) ValidateUpload(filename string, size int64, cfg *UploadValidationConfig) error {
+	// 1. Check dangerous extensions - always reject
+	ext := strings.ToLower(filepath.Ext(filename))
+	if dangerousExtensions[ext] {
+		return fmt.Errorf("file type %s is not allowed for security reasons", ext)
+	}
+
+	// 2. Check size limit
+	if cfg != nil && cfg.MaxSize > 0 && size > cfg.MaxSize {
+		return fmt.Errorf("file size %d exceeds maximum allowed size %d", size, cfg.MaxSize)
+	}
+
+	// 3. Check allowed types whitelist (if configured)
+	if cfg != nil && len(cfg.AllowedTypes) > 0 {
+		allowed := false
+		for _, t := range cfg.AllowedTypes {
+			if strings.EqualFold(ext, t) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return fmt.Errorf("file type %s is not allowed", ext)
+		}
+	}
+
+	return nil
+}
+
+// UploadWithValidation validates and uploads the file.
+func (s *FileService) UploadWithValidation(filename string, size int64, data io.Reader, cfg *UploadValidationConfig) (*dto.FileView, error) {
+	if err := s.ValidateUpload(filename, size, cfg); err != nil {
+		return nil, err
+	}
+	return s.Upload(filename, data)
 }
 
 // UploadFromRequest handles multipart upload from an UploadFileRequest context.

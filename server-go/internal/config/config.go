@@ -13,6 +13,7 @@ type Config struct {
 	Storage  StorageConfig  `mapstructure:"storage"`
 	AI       AIConfig       `mapstructure:"ai"`
 	Captcha  CaptchaConfig  `mapstructure:"captcha"`
+	Upload   UploadConfig   `mapstructure:"upload"`
 }
 
 type ServerConfig struct {
@@ -39,9 +40,14 @@ type AIConfig struct {
 }
 
 type CaptchaConfig struct {
-	KeyLong  int `mapstructure:"key_long"`
-	ImgWidth int `mapstructure:"img_width"`
+	KeyLong   int `mapstructure:"key_long"`
+	ImgWidth  int `mapstructure:"img_width"`
 	ImgHeight int `mapstructure:"img_height"`
+}
+
+type UploadConfig struct {
+	MaxSize      int64    `mapstructure:"max_size"`
+	AllowedTypes []string `mapstructure:"allowed_types"`
 }
 
 var C Config

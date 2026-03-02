@@ -123,6 +123,27 @@
               <a-input-number v-model:value="selectedElement.max" :min="2" />
             </a-form-item>
           </template>
+          <!-- 附件设置 -->
+          <a-divider>附件设置</a-divider>
+          <a-form-item label="允许上传附件">
+            <a-switch v-model:checked="attachmentEnabled" />
+          </a-form-item>
+          <template v-if="attachmentEnabled">
+            <a-form-item label="最大文件数">
+              <a-input-number v-model:value="attachmentMaxFiles" :min="1" :max="10" />
+            </a-form-item>
+            <a-form-item label="最大文件大小 (MB)">
+              <a-input-number v-model:value="attachmentMaxSizeMB" :min="1" :max="50" />
+            </a-form-item>
+            <a-form-item label="允许的文件类型">
+              <a-select
+                v-model:value="attachmentTypes"
+                mode="multiple"
+                placeholder="选择允许的文件类型"
+                :options="fileTypeOptions"
+              />
+            </a-form-item>
+          </template>
         </a-form>
       </div>
     </div>
@@ -185,6 +206,59 @@ const selectedElement = computed(() => {
   return null
 })
 
+// File type options for attachment config
+const fileTypeOptions = [
+  { value: '.pdf', label: 'PDF (.pdf)' },
+  { value: '.doc', label: 'Word (.doc)' },
+  { value: '.docx', label: 'Word (.docx)' },
+  { value: '.xls', label: 'Excel (.xls)' },
+  { value: '.xlsx', label: 'Excel (.xlsx)' },
+  { value: '.jpg', label: '图片 (.jpg)' },
+  { value: '.jpeg', label: '图片 (.jpeg)' },
+  { value: '.png', label: '图片 (.png)' },
+  { value: '.gif', label: '图片 (.gif)' },
+]
+
+// Attachment computed properties
+const attachmentEnabled = computed({
+  get: () => selectedElement.value?.attachment?.enabled ?? false,
+  set: (val) => {
+    if (selectedElement.value) {
+      if (!selectedElement.value.attachment) {
+        selectedElement.value.attachment = { enabled: false, maxFiles: 1, maxSize: 10485760, allowedTypes: ['.pdf', '.doc', '.docx', '.jpg', '.png'] }
+      }
+      selectedElement.value.attachment.enabled = val
+    }
+  }
+})
+
+const attachmentMaxFiles = computed({
+  get: () => selectedElement.value?.attachment?.maxFiles ?? 1,
+  set: (val) => {
+    if (selectedElement.value?.attachment) {
+      selectedElement.value.attachment.maxFiles = val
+    }
+  }
+})
+
+const attachmentMaxSizeMB = computed({
+  get: () => Math.floor((selectedElement.value?.attachment?.maxSize ?? 10485760) / 1048576),
+  set: (val) => {
+    if (selectedElement.value?.attachment) {
+      selectedElement.value.attachment.maxSize = val * 1048576
+    }
+  }
+})
+
+const attachmentTypes = computed({
+  get: () => selectedElement.value?.attachment?.allowedTypes ?? [],
+  set: (val) => {
+    if (selectedElement.value?.attachment) {
+      selectedElement.value.attachment.allowedTypes = val
+    }
+  }
+})
+
 const surveyData = computed(() => ({
   id: projectId.value || 'preview',
   title: projectName.value,
@@ -236,7 +310,8 @@ function addQuestion(type: string) {
       ? [{ id: uuidv4(), text: '选项1' }, { id: uuidv4(), text: '选项2' }]
       : undefined,
     min: type === 'rating' ? 1 : undefined,
-    max: type === 'rating' ? 5 : undefined
+    max: type === 'rating' ? 5 : undefined,
+    attachment: { enabled: false, maxFiles: 1, maxSize: 10485760, allowedTypes: ['.pdf', '.doc', '.docx', '.jpg', '.png'] }
   }
   elements.value.push(element)
   selectedIndex.value = elements.value.length - 1

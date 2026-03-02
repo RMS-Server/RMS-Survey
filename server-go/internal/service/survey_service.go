@@ -3,7 +3,9 @@ package service
 import (
 	"encoding/json"
 
+	"github.com/rms-survey/server/internal/config"
 	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/model"
 	"github.com/rms-survey/server/internal/repository"
 	"gorm.io/gorm"
 )
@@ -262,4 +264,64 @@ func (s *SurveyService) LoadLinkResult(req *dto.PublicLinkRequest) (*dto.PublicL
 	}
 
 	return &dto.PublicLinkResult{ProjectID: req.ProjectID, Data: data}, nil
+}
+
+// GetProjectByID returns a project by ID.
+func (s *SurveyService) GetProjectByID(id string) (*model.Project, error) {
+	return s.projectRepo.GetProject(id)
+}
+
+// GetQuestionAttachmentConfig extracts attachment config for a question.
+func (s *SurveyService) GetQuestionAttachmentConfig(project *model.Project, questionID string) *UploadValidationConfig {
+	// Default config from global settings
+	defaultCfg := &UploadValidationConfig{
+		MaxSize:      config.C.Upload.MaxSize,
+		AllowedTypes: config.C.Upload.AllowedTypes,
+	}
+
+	if project == nil || project.Survey == "" {
+		return defaultCfg
+	}
+
+	// Parse survey schema
+	var schema struct {
+		Pages []struct {
+			Elements []struct {
+				ID         string `json:"id"`
+				Attachment *struct {
+					Enabled      bool     `json:"enabled"`
+					MaxFiles     int      `json:"maxFiles"`
+					MaxSize      int64    `json:"maxSize"`
+					AllowedTypes []string `json:"allowedTypes"`
+				} `json:"attachment"`
+			} `json:"elements"`
+		} `json:"pages"`
+	}
+
+	if err := json.Unmarshal([]byte(project.Survey), &schema); err != nil {
+		return defaultCfg
+	}
+
+	// Find the question
+	for _, page := range schema.Pages {
+		for _, elem := range page.Elements {
+			if elem.ID == questionID && elem.Attachment != nil && elem.Attachment.Enabled {
+				// Use question-specific config, falling back to defaults for zero values
+				maxSize := elem.Attachment.MaxSize
+				if maxSize <= 0 {
+					maxSize = config.C.Upload.MaxSize
+				}
+				allowedTypes := elem.Attachment.AllowedTypes
+				if len(allowedTypes) == 0 {
+					allowedTypes = config.C.Upload.AllowedTypes
+				}
+				return &UploadValidationConfig{
+					MaxSize:      maxSize,
+					AllowedTypes: allowedTypes,
+				}
+			}
+		}
+	}
+
+	return defaultCfg
 }
