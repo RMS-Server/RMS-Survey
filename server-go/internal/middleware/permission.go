@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/surveyking/server/internal/dto"
-	"github.com/surveyking/server/internal/pkg/response"
+	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/pkg/response"
 )
 
 // RequirePermission returns middleware that checks if the current user has the given permission.

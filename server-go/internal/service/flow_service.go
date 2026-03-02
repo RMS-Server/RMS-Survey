@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/surveyking/server/internal/dto"
-	"github.com/surveyking/server/internal/model"
-	"github.com/surveyking/server/internal/repository"
+	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/model"
+	"github.com/rms-survey/server/internal/repository"
 	"gorm.io/gorm"
 )
 

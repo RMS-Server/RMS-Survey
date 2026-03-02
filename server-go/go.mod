@@ -1,4 +1,4 @@
-module github.com/surveyking/server
+module github.com/rms-survey/server
 
 go 1.24.0
 

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	jwtlib "github.com/golang-jwt/jwt/v5"
-	"github.com/surveyking/server/internal/config"
-	"github.com/surveyking/server/internal/dto"
+	"github.com/rms-survey/server/internal/config"
+	"github.com/rms-survey/server/internal/dto"
 )
 
 var (

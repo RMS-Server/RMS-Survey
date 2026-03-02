@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/surveyking/server/internal/model"
+import "github.com/rms-survey/server/internal/model"
 
 // SystemRoleView is the response DTO for a role (full model).
 type SystemRoleView struct {

@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/surveyking/server/internal/dto"
-	"github.com/surveyking/server/internal/repository"
+	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/repository"
 )
 
 // ReportService handles report data business logic.
@@ -18,7 +18,7 @@ func NewReportService(repo *repository.ReportRepository) *ReportService {
 	return &ReportService{repo: repo}
 }
 
-// surveySchema mirrors the Java SurveyKing survey JSON structure.
+// surveySchema mirrors the Java RMS Survey survey JSON structure.
 type surveySchema struct {
 	Pages []struct {
 		Elements []struct {

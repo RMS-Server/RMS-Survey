@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/surveyking/server/internal/config"
-	"github.com/surveyking/server/internal/dto"
-	"github.com/surveyking/server/internal/pkg/response"
+	"github.com/rms-survey/server/internal/config"
+	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/pkg/response"
 )
 
 // AIHandler handles AI chat SSE endpoints.

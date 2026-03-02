@@ -4,12 +4,12 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/surveyking/server/internal/config"
-	"github.com/surveyking/server/internal/handler"
-	"github.com/surveyking/server/internal/middleware"
-	"github.com/surveyking/server/internal/pkg/storage"
-	"github.com/surveyking/server/internal/repository"
-	"github.com/surveyking/server/internal/service"
+	"github.com/rms-survey/server/internal/config"
+	"github.com/rms-survey/server/internal/handler"
+	"github.com/rms-survey/server/internal/middleware"
+	"github.com/rms-survey/server/internal/pkg/storage"
+	"github.com/rms-survey/server/internal/repository"
+	"github.com/rms-survey/server/internal/service"
 	"gorm.io/gorm"
 )
 

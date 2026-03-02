@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/surveyking/server/internal/dto"
-	"github.com/surveyking/server/internal/repository"
+	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/repository"
 )
 
 // ExerciseService handles exercise history business logic.

@@ -2,8 +2,8 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/surveyking/server/internal/pkg/response"
-	"github.com/surveyking/server/internal/service"
+	"github.com/rms-survey/server/internal/pkg/response"
+	"github.com/rms-survey/server/internal/service"
 )
 
 // ReportHandler handles report API endpoints.

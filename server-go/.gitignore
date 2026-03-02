@@ -2,7 +2,7 @@
 configs/
 
 # Go build artifacts
-surveyking
+rms-survey
 server
 *.exe
 

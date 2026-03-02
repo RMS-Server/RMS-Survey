@@ -1,3 +1,0 @@
-卷王问卷考试系统 https://surveyking.cn
-Application Version: ${version}
-Spring Boot Version: ${spring-boot.version}

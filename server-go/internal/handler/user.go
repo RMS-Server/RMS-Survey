@@ -13,12 +13,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	nanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/surveyking/server/internal/dto"
-	jwtpkg "github.com/surveyking/server/internal/pkg/jwt"
-	"github.com/surveyking/server/internal/pkg/cache"
-	"github.com/surveyking/server/internal/pkg/response"
-	"github.com/surveyking/server/internal/repository"
-	"github.com/surveyking/server/internal/service"
+	"github.com/rms-survey/server/internal/dto"
+	jwtpkg "github.com/rms-survey/server/internal/pkg/jwt"
+	"github.com/rms-survey/server/internal/pkg/cache"
+	"github.com/rms-survey/server/internal/pkg/response"
+	"github.com/rms-survey/server/internal/repository"
+	"github.com/rms-survey/server/internal/service"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )

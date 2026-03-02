@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/surveyking/server/internal/config"
-	"github.com/surveyking/server/internal/router"
+	"github.com/rms-survey/server/internal/config"
+	"github.com/rms-survey/server/internal/router"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )

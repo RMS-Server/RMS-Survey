@@ -7,9 +7,9 @@ import (
 	"time"
 
 	nanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/surveyking/server/internal/dto"
-	"github.com/surveyking/server/internal/model"
-	"github.com/surveyking/server/internal/repository"
+	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/model"
+	"github.com/rms-survey/server/internal/repository"
 	"github.com/xuri/excelize/v2"
 )
 

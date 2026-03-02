@@ -4,9 +4,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/surveyking/server/internal/config"
-	jwtpkg "github.com/surveyking/server/internal/pkg/jwt"
-	"github.com/surveyking/server/internal/pkg/response"
+	"github.com/rms-survey/server/internal/config"
+	jwtpkg "github.com/rms-survey/server/internal/pkg/jwt"
+	"github.com/rms-survey/server/internal/pkg/response"
 )
 
 // publicPrefixes lists API path prefixes that skip authentication.

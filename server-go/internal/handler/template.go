@@ -2,9 +2,9 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/surveyking/server/internal/dto"
-	"github.com/surveyking/server/internal/pkg/response"
-	"github.com/surveyking/server/internal/service"
+	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/pkg/response"
+	"github.com/rms-survey/server/internal/service"
 )
 
 // TemplateHandler handles survey template API endpoints.

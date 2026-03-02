@@ -7,10 +7,10 @@ import (
 	"sync"
 
 	nanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/surveyking/server/internal/dto"
-	"github.com/surveyking/server/internal/model"
-	rsapkg "github.com/surveyking/server/internal/pkg/rsa"
-	"github.com/surveyking/server/internal/repository"
+	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/model"
+	rsapkg "github.com/rms-survey/server/internal/pkg/rsa"
+	"github.com/rms-survey/server/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
