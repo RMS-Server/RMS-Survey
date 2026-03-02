@@ -52,7 +52,6 @@ yarn-error.log*
 /vendor/
 
 ### Go build artifacts ###
-server-go/surveyking
 server-go/server
 
 ### Node.js ###
