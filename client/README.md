@@ -1,4 +1,0 @@
-# SurveyKing client
-
-
-todo
