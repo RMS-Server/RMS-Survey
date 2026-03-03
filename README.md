@@ -18,12 +18,13 @@
 ## Features
 
 - **Survey Builder** - Drag-and-drop questionnaire designer with multiple question types
-- **Template Library** - Reusable question templates for quick survey creation
+- **Template Library** - Reusable question templates with categories and tags
 - **Participant Management** - Control who can access your surveys
 - **Response Management** - View, delete, restore, and export survey responses
-- **Survey Logic** - Conditional question display and skip logic
-- **File Attachments** - Upload attachments for survey questions
-- **Role-based Access** - User management with role permissions
+- **Survey Logic** - Conditional question display with AND/OR logic rules
+- **Question Attachments** - Upload files attached to questions with inline preview
+- **Recycle Bin** - Soft delete with restore capability for projects and answers
+- **Role-based Access** - User management with role permissions and RSA-encrypted passwords
 
 ## Tech Stack
 
@@ -34,7 +35,7 @@
 - **Viper** for configuration management
 
 ### Frontend (website/)
-- **Vue 3** with Composition API
+- **Vue 3** with Composition API and `<script setup>` syntax
 - **TypeScript** for type safety
 - **Vite** for fast development and building
 - **Pinia** for state management
@@ -221,7 +222,21 @@ npm run type-check
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET/POST` | `/api/survey/setting` | Get/update survey settings |
-| `GET/POST` | `/api/survey/logic` | Get/update survey logic |
+| `GET/POST` | `/api/survey/logic` | Get/update survey logic rules |
+
+#### Survey Logic Rules
+
+Logic rules enable conditional question display. Each rule consists of:
+- **Target question**: The question to show/hide based on conditions
+- **Conditions**: One or more conditions with operator (equals, contains, greater than, less than, etc.)
+- **Logic operator**: AND (all conditions must match) or OR (any condition matches)
+
+**Frontend Components:**
+- `LogicRuleEditor.vue` — Modal editor for creating/editing logic rules
+- `ConditionBuilder.vue` — Visual condition builder for AND/OR logic
+- `useLogicEvaluator.ts` — Runtime composable that evaluates rules during survey fill
+
+Rules are stored in project settings and evaluated client-side. Hidden questions are excluded from validation during submission. Rules are automatically cleaned up when referenced questions are deleted.
 
 #### Answer Management
 
@@ -259,6 +274,13 @@ npm run type-check
 | `POST` | `/api/system/role/create` | Create role |
 | `POST` | `/api/system/role/update` | Update role |
 | `POST` | `/api/system/role/delete` | Delete role |
+
+#### File Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/public/uploadAttachment` | Upload question attachment |
+| `GET` | `/api/public/preview/:attachmentId` | Preview/download attachment |
 
 ## Database
 
