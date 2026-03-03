@@ -3,7 +3,6 @@ configs/
 
 # Go build artifacts
 rms-survey
-server
 *.exe
 
 # Static files (built from frontend)
