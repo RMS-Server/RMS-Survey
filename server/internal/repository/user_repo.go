@@ -222,27 +222,6 @@ func (r *UserRepo) ListHistoryAnswers(userID string, offset, limit int) ([]model
 	return answers, total, err
 }
 
-// UpdateUserPosition replaces all position assignments for a user in a transaction.
-func (r *UserRepo) UpdateUserPosition(userID, deptID string, positionIDs []string) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("user_id = ?", userID).Delete(&model.UserPosition{}).Error; err != nil {
-			return err
-		}
-		for _, posID := range positionIDs {
-			up := model.UserPosition{
-				UserID:     userID,
-				DeptID:     deptID,
-				PositionID: posID,
-			}
-			up.ID = nanoid(tx)
-			if err := tx.Create(&up).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
 // CountAnswersByUser counts total answers created by the given user.
 func (r *UserRepo) CountAnswersByUser(userID string) (int64, error) {
 	var count int64

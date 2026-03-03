@@ -114,10 +114,3 @@ type MyTaskView struct {
 	Status      int    `json:"status"`
 	CreatedAt   string `json:"createAt"`
 }
-
-// UpdateUserPositionRequest holds data for updating a user's position assignments.
-type UpdateUserPositionRequest struct {
-	ID          string   `json:"id"`
-	PositionIDs []string `json:"positionIds"`
-	DeptID      string   `json:"deptId"`
-}

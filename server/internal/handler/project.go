@@ -19,7 +19,6 @@ type ProjectHandler struct {
 	userSvc     *service.UserService
 	systemSvc   *service.SystemService
 	templateSvc *service.TemplateService
-	repoSvc     *service.RepoService
 }
 
 // NewProjectHandler creates a ProjectHandler wired to the given DB.
@@ -29,7 +28,6 @@ func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 		userSvc:     service.NewUserService(repository.NewUserRepo(db)),
 		systemSvc:   service.NewSystemService(repository.NewSystemRepo(db)),
 		templateSvc: service.NewTemplateService(repository.NewTemplateRepository(db)),
-		repoSvc:     service.NewRepoService(repository.NewRepoRepository(db), repository.NewUserBookRepository(db)),
 	}
 }
 
@@ -50,13 +48,8 @@ func (h *ProjectHandler) RegisterRoutes(project gin.IRouter) {
 	project.GET("/partner/download", h.DownloadPartner)
 	project.POST("/partner/import", h.ImportPartner)
 	project.POST("/selectUser", h.SelectUser)
-	project.POST("/selectDept", h.SelectDept)
 	project.POST("/selectRole", h.SelectRole)
-	project.POST("/selectPosition", h.SelectPosition)
-	project.POST("/selectDict", h.SelectDict)
 	project.POST("/selectTemplate", h.SelectTemplate)
-	project.POST("/selectRepo", h.SelectRepo)
-	project.POST("/selectTag", h.SelectTag)
 }
 
 func currentUser(c *gin.Context) *dto.UserInfo {
@@ -370,48 +363,10 @@ func (h *ProjectHandler) SelectUser(c *gin.Context) {
 	response.OK(c, result.List)
 }
 
-// SelectDept returns the full department tree for the editor.
-func (h *ProjectHandler) SelectDept(c *gin.Context) {
-	result, err := h.systemSvc.ListDepts()
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	response.OK(c, result)
-}
-
 // SelectRole returns roles matching a keyword for the editor.
 func (h *ProjectHandler) SelectRole(c *gin.Context) {
 	name := selectKeyword(c)
 	result, err := h.systemSvc.ListRoles(dto.RoleQuery{
-		PageRequest: dto.PageRequest{PageIndex: 1, PageSize: 20},
-		Name:        name,
-	})
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	response.OK(c, result.List)
-}
-
-// SelectPosition returns positions matching a keyword for the editor.
-func (h *ProjectHandler) SelectPosition(c *gin.Context) {
-	name := selectKeyword(c)
-	result, err := h.systemSvc.ListPositions(dto.PositionQuery{
-		PageRequest: dto.PageRequest{PageIndex: 1, PageSize: 20},
-		Name:        name,
-	})
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	response.OK(c, result.List)
-}
-
-// SelectDict returns dictionaries matching a keyword for the editor.
-func (h *ProjectHandler) SelectDict(c *gin.Context) {
-	name := selectKeyword(c)
-	result, err := h.systemSvc.ListDicts(dto.CommDictQuery{
 		PageRequest: dto.PageRequest{PageIndex: 1, PageSize: 20},
 		Name:        name,
 	})
@@ -438,36 +393,4 @@ func (h *ProjectHandler) SelectTemplate(c *gin.Context) {
 		return
 	}
 	response.OK(c, result)
-}
-
-// SelectRepo returns repos matching a keyword for the editor.
-func (h *ProjectHandler) SelectRepo(c *gin.Context) {
-	name := selectKeyword(c)
-	result, err := h.repoSvc.List(dto.RepoQuery{
-		PageRequest: dto.PageRequest{PageIndex: 1, PageSize: 20},
-		Name:        name,
-	})
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	response.OK(c, result.List)
-}
-
-// SelectTag returns tags matching a category/entityId for the editor.
-func (h *ProjectHandler) SelectTag(c *gin.Context) {
-	var query dto.SystemTagQuery
-	_ = c.ShouldBindJSON(&query)
-	if query.PageSize <= 0 {
-		query.PageSize = 20
-	}
-	if query.PageIndex <= 0 {
-		query.PageIndex = 1
-	}
-	result, err := h.systemSvc.ListTags(query)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	response.OK(c, result.List)
 }

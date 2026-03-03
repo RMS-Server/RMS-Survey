@@ -34,6 +34,16 @@ type uploadSurveyPage struct {
 	Elements []uploadSurveyElement `json:"elements"`
 }
 
+// surveySchema represents the survey structure for export.
+type surveySchema struct {
+	Pages []struct {
+		Elements []struct {
+			ID    string `json:"id"`
+			Title string `json:"title"`
+		} `json:"elements"`
+	} `json:"pages"`
+}
+
 // AnswerService handles business logic for answers.
 type AnswerService struct {
 	repo        *repository.AnswerRepo

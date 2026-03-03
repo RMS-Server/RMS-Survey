@@ -98,39 +98,6 @@ func (s *UserService) GetRSAPublicKey() (string, error) {
 	return pub, nil
 }
 
-// RotateRSAKey forces regeneration of the RSA key pair, replacing the stored one.
-// Holds the write lock for the entire DB + cache update to prevent stale-key races.
-func (s *UserService) RotateRSAKey() (string, error) {
-	rsaKeyCache.Lock()
-	defer rsaKeyCache.Unlock()
-
-	priv, pub, err := rsapkg.GenerateKeyPair()
-	if err != nil {
-		return "", err
-	}
-
-	if err := s.repo.DeleteSysInfoByName("rsa_private_key"); err != nil {
-		return "", err
-	}
-	id, _ := nanoid.New()
-	// Store private key as PEM, public key as raw base64 (Java-compatible)
-	sysInfo := &model.SysInfo{
-		Name:        "rsa_private_key",
-		Description: priv,
-		Setting:     pub,
-	}
-	sysInfo.ID = id
-	if err := s.repo.SaveSysInfo(sysInfo); err != nil {
-		return "", err
-	}
-
-	rsaKeyCache.privateKey = priv
-	rsaKeyCache.publicKey = pub
-	rsaKeyCache.loaded = true
-
-	return pub, nil
-}
-
 // getPrivateKey returns the cached RSA private key.
 func (s *UserService) getPrivateKey() (string, error) {
 	if _, err := s.GetRSAPublicKey(); err != nil {
@@ -390,12 +357,6 @@ func (s *UserService) GetRegisterRoles() ([]dto.RegisterRoleView, error) {
 	return views, nil
 }
 
-// CheckUsernameExist returns true if the username is already taken.
-func (s *UserService) CheckUsernameExist(username string) bool {
-	_, err := s.repo.FindByUsername(username)
-	return err == nil
-}
-
 // FindUserIDByUsername returns the user ID for the given auth_account (username).
 func (s *UserService) FindUserIDByUsername(username string) (string, error) {
 	account, err := s.repo.FindByUsername(username)
@@ -470,11 +431,6 @@ func (s *UserService) GetHistoryTasks(userID string, query dto.MyTaskQuery) (*dt
 		})
 	}
 	return &dto.PageResponse[dto.MyTaskView]{List: views, Total: total}, nil
-}
-
-// UpdateUserPosition replaces position assignments for a user.
-func (s *UserService) UpdateUserPosition(userID, deptID string, positionIDs []string) error {
-	return s.repo.UpdateUserPosition(userID, deptID, positionIDs)
 }
 
 // GetUserAuthorities returns all authority strings for a user based on their roles.

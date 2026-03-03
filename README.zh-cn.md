@@ -1,7 +1,7 @@
 # RMS Survey
 
 <p align="center">
-  <strong>AI 驱动的开源问卷调查与考试系统</strong>
+  <strong>开源问卷调查系统</strong>
 </p>
 
 <p align="center">
@@ -18,13 +18,12 @@
 ## 功能特性
 
 - **问卷设计器** - 拖拽式问卷设计，支持多种题型
-- **在线考试** - 支持自动评分、练习记录、错题本
-- **AI 聊天集成** - 可选的 AI 聊天流接口（需配置）
-- **审批流程** - 简单的答卷审批状态跟踪
-- **模板库** - 可复用的题目模板，支持分类与标签
-- **题库管理** - 支持从 Excel 批量导入导出题目
-- **数据看板** - 实时统计与数据可视化
+- **模板库** - 可复用的题目模板，快速创建问卷
+- **参与者管理** - 控制问卷的访问权限
+- **答卷管理** - 查看、删除、恢复、导出答卷
+- **问卷逻辑** - 条件显示和跳题逻辑
 - **附件上传** - 题目支持上传附件
+- **角色权限** - 用户管理与角色控制
 
 ## 技术栈
 
@@ -102,11 +101,6 @@ jwt:
 
 storage:
   local_path: "./uploads"
-
-ai:
-  api_key: ""
-  base_url: ""
-  model: ""
 EOF
 
 # 创建上传目录
@@ -139,7 +133,6 @@ npm run type-check
 | 变量 | 说明 |
 |------|------|
 | `JWT_SECRET` | JWT 签名密钥（至少 64 字符） |
-| `AI_API_KEY` | AI 服务 API 密钥（可选） |
 
 ## 配置说明
 
@@ -152,9 +145,6 @@ npm run type-check
 | `jwt.secret` | JWT 签名密钥 | 必填 |
 | `jwt.cookie_name` | 认证 Cookie 名称 | survey_token |
 | `storage.local_path` | 文件上传目录 | ./uploads |
-| `ai.api_key` | AI 服务 API 密钥 | 可选 |
-| `ai.base_url` | AI 服务地址 | 可选 |
-| `ai.model` | AI 模型名称 | 可选 |
 
 ## API 参考
 
@@ -164,33 +154,111 @@ npm run type-check
 |------|------|------|
 | `GET` | `/api/public/rsaPublicKey` | 获取 RSA 公钥（用于密码加密） |
 | `POST` | `/api/public/login` | 用户登录 |
+| `POST` | `/api/public/logout` | 用户登出 |
 | `POST` | `/api/public/register` | 用户注册 |
-| `POST` | `/api/public/loadProject` | 加载问卷/考试 |
+| `GET` | `/api/public/listRegisterRole` | 获取可注册角色列表 |
+| `POST` | `/api/public/loadProject` | 加载问卷 |
+| `POST` | `/api/public/validateProject` | 验证问卷访问权限 |
+| `POST` | `/api/public/statistics` | 获取问卷统计 |
 | `POST` | `/api/public/saveAnswer` | 提交答卷 |
 | `POST` | `/api/public/tempSaveAnswer` | 临时保存答卷 |
 | `POST` | `/api/public/uploadAttachment` | 上传题目附件 |
 | `GET` | `/api/public/preview/:attachmentId` | 预览附件 |
+| `GET` | `/captcha/get` | 获取验证码图片 |
+| `POST` | `/captcha/check` | 验证验证码 |
 
 ### 认证接口
 
+#### 用户管理
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `GET/POST` | `/api/project/*` | 项目增删改查 |
-| `GET/POST` | `/api/survey/*` | 问卷设置与逻辑 |
-| `GET/POST` | `/api/answer/*` | 答卷管理 |
-| `GET/POST` | `/api/template/*` | 模板增删改查（含分类标签） |
-| `GET/POST` | `/api/repo/*` | 题库管理 |
-| `GET/POST` | `/api/repo/userBook/*` | 用户错题本/收藏夹 |
-| `GET/POST` | `/api/repo/import` | 从 Excel 导入题目 |
-| `GET` | `/api/repo/export` | 导出题目到 Excel |
-| `GET/POST` | `/api/workflow/*` | 审批流程操作 |
-| `GET` | `/api/ai/chat/models` | 获取可用 AI 模型 |
-| `GET` | `/api/ai/chat/stream` | AI 聊天流（SSE） |
-| `GET/POST` | `/api/file/*` | 文件上传下载 |
-| `GET/POST` | `/api/dashboard/*` | 看板数据 |
-| `GET/POST` | `/api/exercise/*` | 练习记录 |
-| `GET` | `/api/report/:shortId` | 报表数据 |
-| `GET/POST` | `/api/system/*` | 系统设置 |
+| `GET` | `/currentUser` | 获取当前用户信息 |
+| `GET` | `/userOverview` | 获取用户概览统计 |
+| `GET` | `/api/user/list` | 用户列表（分页） |
+| `POST` | `/api/user` | 创建用户 |
+| `PUT` | `/api/user` | 更新用户 |
+| `GET` | `/api/user/:id` | 获取用户详情 |
+| `DELETE` | `/api/user/:id` | 删除用户 |
+| `POST` | `/api/user/bindRole` | 绑定用户角色 |
+| `PUT` | `/api/user/updatePassword` | 修改密码 |
+| `POST` | `/importUser` | 从 Excel 导入用户 |
+
+#### 项目管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/project/list` | 项目列表（分页） |
+| `GET` | `/api/project` | 获取项目详情 |
+| `GET` | `/api/project/setting` | 获取项目设置 |
+| `POST` | `/api/project/create` | 创建项目 |
+| `POST` | `/api/project/update` | 更新项目 |
+| `POST` | `/api/project/delete` | 删除项目（软删除） |
+| `GET` | `/api/project/trash` | 已删除项目列表 |
+| `POST` | `/api/project/destroy` | 彻底删除项目 |
+| `POST` | `/api/project/restore` | 恢复已删除项目 |
+
+#### 参与者管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/project/partner/list` | 参与者列表 |
+| `POST` | `/api/project/partner/create` | 添加参与者 |
+| `POST` | `/api/project/partner/delete` | 移除参与者 |
+| `GET` | `/api/project/partner/download` | 下载参与者 Excel |
+| `POST` | `/api/project/partner/import` | 导入参与者 Excel |
+
+#### 选择器
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/project/selectUser` | 用户选择器 |
+| `POST` | `/api/project/selectRole` | 角色选择器 |
+| `POST` | `/api/project/selectTemplate` | 模板选择器 |
+
+#### 问卷设置
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET/POST` | `/api/survey/setting` | 获取/更新问卷设置 |
+| `GET/POST` | `/api/survey/logic` | 获取/更新问卷逻辑 |
+
+#### 答卷管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/answer/list` | 答卷列表（分页） |
+| `GET` | `/api/answer/trash` | 已删除答卷列表 |
+| `GET` | `/api/answer` | 获取答卷详情 |
+| `POST` | `/api/answer/create` | 创建答卷 |
+| `POST` | `/api/answer/update` | 更新答卷 |
+| `POST` | `/api/answer/delete` | 删除答卷（软删除） |
+| `POST` | `/api/answer/destroy` | 彻底删除答卷 |
+| `POST` | `/api/answer/restore` | 恢复已删除答卷 |
+| `GET` | `/api/answer/download` | 导出答卷 Excel |
+
+#### 模板管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/template/list` | 模板列表 |
+| `GET` | `/api/template` | 获取模板详情 |
+| `POST` | `/api/template/create` | 创建模板 |
+| `POST` | `/api/template/update` | 更新模板 |
+| `POST` | `/api/template/delete` | 删除模板 |
+| `GET` | `/api/template/category/list` | 模板分类列表 |
+| `GET` | `/api/template/tag/list` | 模板标签列表 |
+
+#### 系统管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/system` | 获取系统信息 |
+| `POST` | `/api/system/update` | 更新系统设置 |
+| `GET` | `/api/system/role/list` | 角色列表 |
+| `POST` | `/api/system/role/create` | 创建角色 |
+| `POST` | `/api/system/role/update` | 更新角色 |
+| `POST` | `/api/system/role/delete` | 删除角色 |
 
 ## 数据库
 
@@ -198,20 +266,18 @@ npm run type-check
 
 | 表名 | 说明 |
 |------|------|
-| `t_project` | 问卷和考试 |
+| `t_project` | 问卷项目 |
 | `t_answer` | 答卷记录 |
 | `t_template` | 题目模板 |
-| `t_repo` | 题库 |
-| `t_user_book` | 用户题目收藏（错题本） |
-| `t_flow_operation` | 审批流程历史 |
 | `t_file` | 上传的文件 |
 | `t_user` | 用户 |
 | `t_role` | 角色 |
 | `t_account` | 认证账户 |
-| `t_dashboard` | 看板配置 |
+| `t_project_partner` | 问卷参与者 |
+| `t_user_role` | 用户角色关联 |
 | `t_sys_info` | 系统设置 |
+| `t_comm_dict_item` | 字典项（问卷下拉选项） |
 
 ## 许可证
 
 [MIT License](LICENSE)
-

@@ -1,7 +1,7 @@
 # RMS Survey
 
 <p align="center">
-  <strong>AI-Powered Open Source Survey & Exam System</strong>
+  <strong>Open Source Survey System</strong>
 </p>
 
 <p align="center">
@@ -18,13 +18,12 @@
 ## Features
 
 - **Survey Builder** - Drag-and-drop questionnaire designer with multiple question types
-- **Exam System** - Online examination with auto-scoring, exercise history and practice mode
-- **AI Chat Integration** - Optional AI chat stream integration (configurable)
-- **Approval Workflow** - Simple approval flow tracking for survey responses
-- **Template Library** - Reusable question templates with categories and tags
-- **Question Bank** - Centralized repository with Excel import/export support
-- **Dashboard & Reports** - Real-time analytics and data visualization
+- **Template Library** - Reusable question templates for quick survey creation
+- **Participant Management** - Control who can access your surveys
+- **Response Management** - View, delete, restore, and export survey responses
+- **Survey Logic** - Conditional question display and skip logic
 - **File Attachments** - Upload attachments for survey questions
+- **Role-based Access** - User management with role permissions
 
 ## Tech Stack
 
@@ -102,11 +101,6 @@ jwt:
 
 storage:
   local_path: "./uploads"
-
-ai:
-  api_key: ""
-  base_url: ""
-  model: ""
 EOF
 
 # Create upload directory
@@ -139,7 +133,6 @@ npm run type-check
 | Variable | Description |
 |----------|-------------|
 | `JWT_SECRET` | JWT signing secret (min 64 chars) |
-| `AI_API_KEY` | AI service API key (optional) |
 
 ## Configuration
 
@@ -152,9 +145,6 @@ npm run type-check
 | `jwt.secret` | JWT signing secret | Required |
 | `jwt.cookie_name` | Auth cookie name | survey_token |
 | `storage.local_path` | File upload directory | ./uploads |
-| `ai.api_key` | AI service API key | Optional |
-| `ai.base_url` | AI service base URL | Optional |
-| `ai.model` | AI model name | Optional |
 
 ## API Reference
 
@@ -164,33 +154,111 @@ npm run type-check
 |--------|------|-------------|
 | `GET` | `/api/public/rsaPublicKey` | Get RSA public key for password encryption |
 | `POST` | `/api/public/login` | User login |
+| `POST` | `/api/public/logout` | User logout |
 | `POST` | `/api/public/register` | User registration |
-| `POST` | `/api/public/loadProject` | Load survey/exam by ID |
-| `POST` | `/api/public/saveAnswer` | Submit survey/exam answer |
+| `GET` | `/api/public/listRegisterRole` | Get available registration roles |
+| `POST` | `/api/public/loadProject` | Load survey by code |
+| `POST` | `/api/public/validateProject` | Validate survey access |
+| `POST` | `/api/public/statistics` | Get survey statistics |
+| `POST` | `/api/public/saveAnswer` | Submit survey answer |
 | `POST` | `/api/public/tempSaveAnswer` | Temporarily save answer |
 | `POST` | `/api/public/uploadAttachment` | Upload question attachment |
 | `GET` | `/api/public/preview/:attachmentId` | Preview attachment file |
+| `GET` | `/captcha/get` | Get captcha image |
+| `POST` | `/captcha/check` | Verify captcha |
 
 ### Protected Endpoints
 
+#### User Management
+
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET/POST` | `/api/project/*` | Project CRUD operations |
-| `GET/POST` | `/api/survey/*` | Survey settings and logic |
-| `GET/POST` | `/api/answer/*` | Answer management |
-| `GET/POST` | `/api/template/*` | Template CRUD with categories/tags |
-| `GET/POST` | `/api/repo/*` | Question bank management |
-| `GET/POST` | `/api/repo/userBook/*` | User's wrong/correct question book |
-| `GET/POST` | `/api/repo/import` | Import questions from Excel |
-| `GET` | `/api/repo/export` | Export questions to Excel |
-| `GET/POST` | `/api/workflow/*` | Approval workflow operations |
-| `GET` | `/api/ai/chat/models` | Get available AI models |
-| `GET` | `/api/ai/chat/stream` | AI chat stream (SSE) |
-| `GET/POST` | `/api/file/*` | File upload/download |
-| `GET/POST` | `/api/dashboard/*` | Dashboard data |
-| `GET/POST` | `/api/exercise/*` | Exercise history |
-| `GET` | `/api/report/:shortId` | Report data |
-| `GET/POST` | `/api/system/*` | System settings |
+| `GET` | `/currentUser` | Get current user info |
+| `GET` | `/userOverview` | Get user overview statistics |
+| `GET` | `/api/user/list` | List users (paginated) |
+| `POST` | `/api/user` | Create user |
+| `PUT` | `/api/user` | Update user |
+| `GET` | `/api/user/:id` | Get user by ID |
+| `DELETE` | `/api/user/:id` | Delete user |
+| `POST` | `/api/user/bindRole` | Bind user role |
+| `PUT` | `/api/user/updatePassword` | Update password |
+| `POST` | `/importUser` | Import users from Excel |
+
+#### Project Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/project/list` | List projects (paginated) |
+| `GET` | `/api/project` | Get project by ID |
+| `GET` | `/api/project/setting` | Get project settings |
+| `POST` | `/api/project/create` | Create project |
+| `POST` | `/api/project/update` | Update project |
+| `POST` | `/api/project/delete` | Delete project (soft) |
+| `GET` | `/api/project/trash` | List deleted projects |
+| `POST` | `/api/project/destroy` | Permanently delete project |
+| `POST` | `/api/project/restore` | Restore deleted project |
+
+#### Participant Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/project/partner/list` | List participants |
+| `POST` | `/api/project/partner/create` | Add participant |
+| `POST` | `/api/project/partner/delete` | Remove participant |
+| `GET` | `/api/project/partner/download` | Download participants Excel |
+| `POST` | `/api/project/partner/import` | Import participants Excel |
+
+#### Selectors
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/project/selectUser` | User selector |
+| `POST` | `/api/project/selectRole` | Role selector |
+| `POST` | `/api/project/selectTemplate` | Template selector |
+
+#### Survey Settings
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET/POST` | `/api/survey/setting` | Get/update survey settings |
+| `GET/POST` | `/api/survey/logic` | Get/update survey logic |
+
+#### Answer Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/answer/list` | List answers (paginated) |
+| `GET` | `/api/answer/trash` | List deleted answers |
+| `GET` | `/api/answer` | Get answer by ID |
+| `POST` | `/api/answer/create` | Create answer |
+| `POST` | `/api/answer/update` | Update answer |
+| `POST` | `/api/answer/delete` | Delete answer (soft) |
+| `POST` | `/api/answer/destroy` | Permanently delete answer |
+| `POST` | `/api/answer/restore` | Restore deleted answer |
+| `GET` | `/api/answer/download` | Export answers to Excel |
+
+#### Template Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/template/list` | List templates |
+| `GET` | `/api/template` | Get template by ID |
+| `POST` | `/api/template/create` | Create template |
+| `POST` | `/api/template/update` | Update template |
+| `POST` | `/api/template/delete` | Delete template |
+| `GET` | `/api/template/category/list` | List template categories |
+| `GET` | `/api/template/tag/list` | List template tags |
+
+#### System Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/system` | Get system info |
+| `POST` | `/api/system/update` | Update system settings |
+| `GET` | `/api/system/role/list` | List roles |
+| `POST` | `/api/system/role/create` | Create role |
+| `POST` | `/api/system/role/update` | Update role |
+| `POST` | `/api/system/role/delete` | Delete role |
 
 ## Database
 
@@ -198,21 +266,18 @@ Tables use `t_` prefix. Core tables:
 
 | Table | Description |
 |-------|-------------|
-| `t_project` | Surveys and exams |
-| `t_answer` | Survey/exam responses |
+| `t_project` | Survey projects |
+| `t_answer` | Survey responses |
 | `t_template` | Question templates |
-| `t_repo` | Question banks |
-| `t_user_book` | User's question collection (wrong/correct) |
-| `t_flow_operation` | Approval workflow history |
 | `t_file` | Uploaded files |
 | `t_user` | Users |
 | `t_role` | Roles |
 | `t_account` | Authentication accounts |
-| `t_dashboard` | Dashboard configurations |
+| `t_project_partner` | Survey participants |
+| `t_user_role` | User-role associations |
 | `t_sys_info` | System settings |
+| `t_comm_dict_item` | Dictionary items for dropdowns |
 
 ## License
 
 [MIT License](LICENSE)
-
-

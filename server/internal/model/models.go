@@ -2,8 +2,6 @@ package model
 
 import (
 	"time"
-
-	"gorm.io/datatypes"
 )
 
 // Account maps to t_account.
@@ -38,17 +36,6 @@ type Answer struct {
 
 func (Answer) TableName() string { return "t_answer" }
 
-// CommDict maps to t_comm_dict.
-type CommDict struct {
-	BaseModelNoSoftDelete
-	Code     string `gorm:"column:code;size:256" json:"code"`
-	Name     string `gorm:"column:name;size:256" json:"name"`
-	Remark   string `gorm:"column:remark;size:256" json:"remark"`
-	DictType *int   `gorm:"column:dict_type;default:1" json:"dictType"`
-}
-
-func (CommDict) TableName() string { return "t_comm_dict" }
-
 // CommDictItem maps to t_comm_dict_item (composite PK: id + item_value).
 type CommDictItem struct {
 	ID              string    `gorm:"primaryKey;size:64" json:"id"`
@@ -66,33 +53,6 @@ type CommDictItem struct {
 
 func (CommDictItem) TableName() string { return "t_comm_dict_item" }
 
-// Dashboard maps to t_dashboard.
-type Dashboard struct {
-	BaseModelNoSoftDelete
-	Key       string `gorm:"column:key;size:256;not null" json:"key"`
-	Type      *int   `gorm:"column:type" json:"type"`
-	ProjectID string `gorm:"column:project_id;size:64" json:"projectId"`
-	Setting   string `gorm:"column:setting;size:1024" json:"setting"`
-}
-
-func (Dashboard) TableName() string { return "t_dashboard" }
-
-// Dept maps to t_dept.
-type Dept struct {
-	BaseModel
-	ParentID     string `gorm:"column:parent_id;size:64;not null" json:"parentId"`
-	Name         string `gorm:"column:name;size:64" json:"name"`
-	ShortName    string `gorm:"column:short_name;size:64;not null" json:"shortName"`
-	Code         string `gorm:"column:code;size:64" json:"code"`
-	ManagerID    string `gorm:"column:manager_id;size:64" json:"managerId"`
-	SortCode     *int   `gorm:"column:sort_code" json:"sortCode"`
-	PropertyJSON string `gorm:"column:property_json;size:256" json:"propertyJson"`
-	Status       string `gorm:"column:status;size:20" json:"status"`
-	Remark       string `gorm:"column:remark;size:256" json:"remark"`
-}
-
-func (Dept) TableName() string { return "t_dept" }
-
 // File maps to t_file.
 type File struct {
 	BaseModel
@@ -105,18 +65,6 @@ type File struct {
 }
 
 func (File) TableName() string { return "t_file" }
-
-// Position maps to t_position.
-type Position struct {
-	BaseModel
-	Name               string `gorm:"column:name;size:50;not null" json:"name"`
-	Code               string `gorm:"column:code;size:20" json:"code"`
-	IsVirtual          bool   `gorm:"column:is_virtual;not null" json:"isVirtual"`
-	DataPermissionType string `gorm:"column:data_permission_type;size:256" json:"dataPermissionType"`
-	PropertyJSON       string `gorm:"column:property_json;size:20" json:"propertyJson"`
-}
-
-func (Position) TableName() string { return "t_position" }
 
 // Project maps to t_project.
 type Project struct {
@@ -148,31 +96,6 @@ type ProjectPartner struct {
 
 func (ProjectPartner) TableName() string { return "t_project_partner" }
 
-// Repo maps to t_repo.
-type Repo struct {
-	BaseModelNoSoftDelete
-	Name        string `gorm:"column:name;size:64" json:"name"`
-	Description string `gorm:"column:description;size:512" json:"description"`
-	Category    string `gorm:"column:category;size:64" json:"category"`
-	Mode        string `gorm:"column:mode;size:32" json:"mode"`
-	Shared      *bool  `gorm:"column:shared;default:0" json:"shared"`
-	Tag         string `gorm:"column:tag;size:512" json:"tag"`
-	Priority    *int   `gorm:"column:priority" json:"priority"`
-	Setting     string `gorm:"column:setting;type:text" json:"setting"`
-	IsPractice  *int8  `gorm:"column:is_practice" json:"isPractice"`
-}
-
-func (Repo) TableName() string { return "t_repo" }
-
-// RepoTemplate maps to t_repo_template.
-type RepoTemplate struct {
-	BaseModelCreateOnly
-	TemplateID string `gorm:"column:template_id;size:64" json:"templateId"`
-	RepoID     string `gorm:"column:repo_id;size:64" json:"repoId"`
-}
-
-func (RepoTemplate) TableName() string { return "t_repo_template" }
-
 // Role maps to t_role.
 type Role struct {
 	BaseModel
@@ -200,16 +123,6 @@ type SysInfo struct {
 }
 
 func (SysInfo) TableName() string { return "t_sys_info" }
-
-// Tag maps to t_tag.
-type Tag struct {
-	BaseModelCreateOnly
-	EntityID string `gorm:"column:entity_id;size:64" json:"entityId"`
-	Name     string `gorm:"column:name;size:128" json:"name"`
-	Category string `gorm:"column:category;size:256" json:"category"`
-}
-
-func (Tag) TableName() string { return "t_tag" }
 
 // Template maps to t_template.
 type Template struct {
@@ -246,34 +159,6 @@ type User struct {
 
 func (User) TableName() string { return "t_user" }
 
-// UserBook maps to t_user_book.
-type UserBook struct {
-	BaseModelNoSoftDelete
-	Name         string `gorm:"column:name;size:2048" json:"name"`
-	TemplateID   string `gorm:"column:template_id;size:64" json:"templateId"`
-	WrongTimes   *int   `gorm:"column:wrong_times" json:"wrongTimes"`
-	CorrectTimes *int   `gorm:"column:correct_times" json:"correctTimes"`
-	Note         string `gorm:"column:note;type:text" json:"note"`
-	Status       *int   `gorm:"column:status" json:"status"`
-	Type         *int   `gorm:"column:type" json:"type"`
-	RepoID       string `gorm:"column:repo_id;size:256" json:"repoId"`
-	IsMarked     *int8  `gorm:"column:is_marked" json:"isMarked"`
-}
-
-func (UserBook) TableName() string { return "t_user_book" }
-
-// UserPosition maps to t_user_position.
-type UserPosition struct {
-	BaseModelNoSoftDelete
-	UserID            string `gorm:"column:user_id;size:64;not null" json:"userId"`
-	DeptID            string `gorm:"column:dept_id;size:64" json:"deptId"`
-	PositionID        string `gorm:"column:position_id;size:64" json:"positionId"`
-	IsPrimaryPosition *bool  `gorm:"column:is_primary_position" json:"isPrimaryPosition"`
-	PropertyJSON      string `gorm:"column:propertyJson;size:256" json:"propertyJson"`
-}
-
-func (UserPosition) TableName() string { return "t_user_position" }
-
 // UserRole maps to t_user_role.
 type UserRole struct {
 	BaseModelNoSoftDelete
@@ -283,19 +168,3 @@ type UserRole struct {
 }
 
 func (UserRole) TableName() string { return "t_user_role" }
-
-// FlowOperation maps to t_flow_operation (approval history).
-type FlowOperation struct {
-	BaseModelCreateOnly
-	ProcessInstanceID string `gorm:"column:process_instance_id;size:64;not null" json:"processInstanceId"`
-	AnswerID          string `gorm:"column:answer_id;size:64;not null" json:"answerId"`
-	OperatorID        string `gorm:"column:operator_id;size:64" json:"operatorId"`
-	OperatorName      string `gorm:"column:operator_name;size:256" json:"operatorName"`
-	Action            string `gorm:"column:action;size:32" json:"action"`
-	Comment           string `gorm:"column:comment;size:1024" json:"comment"`
-}
-
-func (FlowOperation) TableName() string { return "t_flow_operation" }
-
-// Ensure datatypes import is used (for future JSON column usage).
-var _ datatypes.JSON

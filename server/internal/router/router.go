@@ -42,26 +42,15 @@ func Setup(db *gorm.DB) *gin.Engine {
 
 	// --- Repositories ---
 	systemRepo := repository.NewSystemRepo(db)
-	flowRepo := repository.NewFlowRepository(db)
 	fileRepo := repository.NewFileRepository(db)
-	repoRepo := repository.NewRepoRepository(db)
-	userBookRepo := repository.NewUserBookRepository(db)
 	templateRepo := repository.NewTemplateRepository(db)
-	exerciseRepo := repository.NewExerciseRepository(db)
-	dashboardRepo := repository.NewDashboardRepository(db)
-	reportRepo := repository.NewReportRepository(db)
 	userRepo := repository.NewUserRepo(db)
 
 	// --- Services ---
 	systemSvc := service.NewSystemService(systemRepo)
-	flowSvc := service.NewFlowService(flowRepo)
 	localStorage := &storage.LocalStorage{BasePath: config.C.Storage.LocalPath}
 	fileSvc := service.NewFileService(fileRepo, localStorage)
-	repoSvc := service.NewRepoService(repoRepo, userBookRepo)
 	templateSvc := service.NewTemplateService(templateRepo)
-	exerciseSvc := service.NewExerciseService(exerciseRepo)
-	dashboardSvc := service.NewDashboardService(dashboardRepo)
-	reportSvc := service.NewReportService(reportRepo)
 	userSvc := service.NewUserService(userRepo)
 
 	// --- Handlers ---
@@ -70,14 +59,8 @@ func Setup(db *gorm.DB) *gin.Engine {
 	surveyH := handler.NewSurveyHandlerWithFile(db, fileSvc)
 	answerH := handler.NewAnswerHandler(db)
 	systemH := handler.NewSystemHandlerWithUser(systemSvc, userSvc)
-	flowH := handler.NewFlowHandler(flowSvc)
-	aiH := handler.NewAIHandler()
 	fileH := handler.NewFileHandler(fileSvc)
-	repoH := handler.NewRepoHandler(repoSvc)
 	templateH := handler.NewTemplateHandler(templateSvc)
-	exerciseH := handler.NewExerciseHandler(exerciseSvc)
-	dashboardH := handler.NewDashboardHandler(dashboardSvc)
-	reportH := handler.NewReportHandler(reportSvc)
 
 	// --- Route groups ---
 	// Public routes (no auth)
@@ -107,33 +90,6 @@ func Setup(db *gorm.DB) *gin.Engine {
 	systemGrp := api.Group("/system")
 	systemH.RegisterRoutes(systemGrp)
 
-	// Flow routes — /api/flow (legacy) and /api/workflow (Java-aligned)
-	registerFlowRoutes := func(grp *gin.RouterGroup) {
-		grp.GET("", flowH.GetFlow)
-		grp.POST("/save", flowH.SaveFlow)
-		grp.POST("/deploy", flowH.Deploy)
-		grp.GET("/auditRecord", flowH.GetAuditRecord)
-		grp.GET("/tasks", flowH.GetFlowTasks)
-		grp.GET("/revertNodes", flowH.GetRevertNodes)
-		grp.POST("/approvalTask", flowH.ApprovalTask)
-		grp.GET("/statics", flowH.Statics)
-		grp.GET("/getTaskInfo", flowH.GetTaskInfo)
-		grp.GET("/loadSchema", flowH.LoadSchema)
-	}
-	registerFlowRoutes(api.Group("/flow"))
-	registerFlowRoutes(api.Group("/workflow"))
-
-	// AI chat routes
-	aiGrp := api.Group("/ai/chat")
-	{
-		aiGrp.GET("/models", aiH.GetModels)
-		aiGrp.POST("/conversation", aiH.CreateConversation)
-		aiGrp.POST("/create-conversation", aiH.CreateConversation) // Java-aligned alias
-		aiGrp.POST("/conversation/close", aiH.CloseConversation)
-		aiGrp.POST("/close-conversation", aiH.CloseConversation) // Java-aligned alias
-		aiGrp.GET("/stream", aiH.Stream)
-	}
-
 	// File routes
 	fileGrp := api.Group("/file")
 	{
@@ -143,29 +99,6 @@ func Setup(db *gorm.DB) *gin.Engine {
 		fileGrp.POST("/create", fileH.Upload) // Java uses /create, Go uses /upload
 		fileGrp.POST("/delete", fileH.DeleteFile)
 		fileGrp.GET("/downloadTemplate", fileH.DownloadTemplate)
-	}
-
-	// Repo routes
-	repoGrp := api.Group("/repo")
-	{
-		repoGrp.GET("/list", repoH.List)
-		repoGrp.POST("/create", repoH.Create)
-		repoGrp.POST("/update", repoH.Update)
-		repoGrp.POST("/delete", repoH.Delete)
-		repoGrp.POST("/batchCreate", repoH.BatchCreate)
-		repoGrp.POST("/unbind", repoH.Unbind)
-		repoGrp.POST("/pick", repoH.Pick)
-		repoGrp.POST("/import", repoH.Import)
-		repoGrp.GET("/export", repoH.Export)
-		repoGrp.GET("/userBook/list", repoH.ListUserBook)
-		repoGrp.POST("/userBook/create", repoH.CreateUserBook)
-		repoGrp.POST("/userBook/update", repoH.UpdateUserBook)
-		repoGrp.POST("/userBook/delete", repoH.DeleteUserBook)
-		// Java uses /book/* path
-		repoGrp.GET("/book/list", repoH.ListUserBook)
-		repoGrp.POST("/book/create", repoH.CreateUserBook)
-		repoGrp.POST("/book/update", repoH.UpdateUserBook)
-		repoGrp.POST("/book/delete", repoH.DeleteUserBook)
 	}
 
 	// Template routes
@@ -182,27 +115,6 @@ func Setup(db *gorm.DB) *gin.Engine {
 		templateGrp.GET("/listCategory", templateH.ListCategory)
 		templateGrp.GET("/listTag", templateH.ListTag)
 		templateGrp.GET("/get", templateH.Get)
-	}
-
-	// Exercise routes
-	exerciseGrp := api.Group("/exercise")
-	{
-		exerciseGrp.GET("/list", exerciseH.List)
-		exerciseGrp.GET("/detail", exerciseH.GetDetail)
-	}
-
-	// Dashboard routes
-	dashboardGrp := api.Group("/dashboard")
-	{
-		dashboardGrp.GET("/list", dashboardH.List)
-		dashboardGrp.POST("/save", dashboardH.Save)
-		dashboardGrp.POST("/delete", dashboardH.Delete)
-	}
-
-	// Report routes
-	reportGrp := api.Group("/report")
-	{
-		reportGrp.GET("/:shortId", reportH.GetData)
 	}
 
 	return r
