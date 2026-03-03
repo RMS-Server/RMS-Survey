@@ -105,3 +105,48 @@ type PublicLinkResult struct {
 	ProjectID string      `json:"projectId"`
 	Data      interface{} `json:"data"`
 }
+
+// LogicOperator defines comparison operators for logic conditions
+type LogicOperator string
+
+const (
+	OpEq       LogicOperator = "eq"        // equals (radio, dropdown)
+	OpNeq      LogicOperator = "neq"       // not equals
+	OpIn       LogicOperator = "in"        // contains (checkbox)
+	OpNotIn    LogicOperator = "not_in"    // not contains
+	OpGt       LogicOperator = "gt"        // greater than (rating)
+	OpGte      LogicOperator = "gte"       // greater than or equal
+	OpLt       LogicOperator = "lt"        // less than
+	OpLte      LogicOperator = "lte"       // less than or equal
+	OpEmpty    LogicOperator = "empty"     // is empty
+	OpNotEmpty LogicOperator = "not_empty" // is not empty
+)
+
+// LogicCondition represents a single condition
+type LogicCondition struct {
+	QuestionID string          `json:"questionId"`
+	Operator   LogicOperator   `json:"operator"`
+	Value      json.RawMessage `json:"value"` // string, number, or []string
+}
+
+// LogicConditionGroup represents a group of conditions combined with AND/OR
+type LogicConditionGroup struct {
+	ID         string           `json:"id"`
+	Type       string           `json:"type"` // "and" | "or"
+	Conditions []LogicCondition `json:"conditions"`
+}
+
+// LogicAction defines what happens when conditions are met
+type LogicAction struct {
+	Type      string   `json:"type"`      // "show" | "hide"
+	TargetIDs []string `json:"targetIds"` // question IDs to show/hide
+}
+
+// LogicRule represents a complete logic rule
+type LogicRule struct {
+	ID        string              `json:"id"`
+	Name      string              `json:"name,omitempty"`
+	Condition LogicConditionGroup `json:"condition"`
+	Action    LogicAction         `json:"action"`
+	Enabled   bool                `json:"enabled"`
+}

@@ -3,11 +3,8 @@
     <div v-for="(page, pageIndex) in survey.pages" :key="page.id" class="survey-page">
       <h2 v-if="page.title" class="page-title">{{ page.title }}</h2>
 
-      <div
-        v-for="(element, elementIndex) in page.elements"
-        :key="element.id"
-        class="question-item"
-      >
+      <template v-for="(element, elementIndex) in page.elements" :key="element.id">
+        <div v-if="isQuestionVisible(element.id)" class="question-item">
         <div class="question-title">
           <span class="question-number">{{ pageIndex + 1 }}.{{ elementIndex + 1 }}</span>
           {{ element.title }}
@@ -44,31 +41,31 @@
             v-if="element.type === 'radio'"
             :element="element"
             :value="internalAnswers[element.id]?.value as string"
-            @update:value="internalAnswers[element.id]!.value = $event"
+            @update:value="updateAnswer(element.id, $event)"
           />
           <CheckboxElement
             v-else-if="element.type === 'checkbox'"
             :element="element"
             :value="internalAnswers[element.id]?.value as string[]"
-            @update:value="internalAnswers[element.id]!.value = $event"
+            @update:value="updateAnswer(element.id, $event)"
           />
           <FillBlankElement
             v-else-if="element.type === 'fillBlank'"
             :element="element"
             :value="internalAnswers[element.id]?.value as string"
-            @update:value="internalAnswers[element.id]!.value = $event"
+            @update:value="updateAnswer(element.id, $event)"
           />
           <DropdownElement
             v-else-if="element.type === 'dropdown'"
             :element="element"
             :value="internalAnswers[element.id]?.value as string"
-            @update:value="internalAnswers[element.id]!.value = $event"
+            @update:value="updateAnswer(element.id, $event)"
           />
           <RatingElement
             v-else-if="element.type === 'rating'"
             :element="element"
             :value="internalAnswers[element.id]?.value as number"
-            @update:value="internalAnswers[element.id]!.value = $event"
+            @update:value="updateAnswer(element.id, $event)"
           />
         </div>
 
@@ -79,10 +76,11 @@
             :question-id="element.id"
             :config="element.attachment!"
             :model-value="internalAnswers[element.id]?.attachments || []"
-            @update:model-value="internalAnswers[element.id]!.attachments = $event"
+            @update:model-value="updateAttachments(element.id, $event)"
           />
         </div>
-      </div>
+        </div>
+      </template>
     </div>
 
     <div v-if="!preview" class="survey-actions">
@@ -93,9 +91,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { DownloadOutlined } from '@ant-design/icons-vue'
-import type { SurveySchema, SurveyElement, AttachmentConfig, AnswerValue } from '@/types/survey'
+import type { SurveySchema, SurveyElement, AttachmentConfig, AnswerValue, AttachmentInfo } from '@/types/survey'
+import { useLogicEvaluator } from '@/composables/useLogicEvaluator'
 import RadioElement from './elements/RadioElement.vue'
 import CheckboxElement from './elements/CheckboxElement.vue'
 import FillBlankElement from './elements/FillBlankElement.vue'
@@ -116,8 +115,27 @@ const emit = defineEmits<{
   (e: 'update:answers', answers: Record<string, unknown>): void
 }>()
 
-// Internal answers with attachment support
+// Internal answers with attachment support - this is the source of truth for answers
 const internalAnswers = ref<Record<string, AnswerValue>>({})
+
+// Convert survey prop to computed for evaluator
+const surveyComputed = computed(() => props.survey)
+
+// Convert internalAnswers to plain format for logic evaluation
+// Use a reactive counter to force re-evaluation
+const answerVersion = ref(0)
+const answersForLogic = computed<Record<string, unknown>>(() => {
+  // Access answerVersion to create dependency
+  void answerVersion.value
+  const plain: Record<string, unknown> = {}
+  for (const [key, answer] of Object.entries(internalAnswers.value)) {
+    plain[key] = answer.value
+  }
+  return plain
+})
+
+// Logic evaluator for conditional rendering
+const { isQuestionVisible } = useLogicEvaluator(surveyComputed, answersForLogic)
 
 // Initialize from props
 watch(() => props.answers, (val) => {
@@ -130,13 +148,32 @@ watch(() => props.answers, (val) => {
     }
   }
   internalAnswers.value = converted
-}, { immediate: true, deep: true })
+  answerVersion.value++
+}, { immediate: true })
 
-// Sync internalAnswers back to parent (including attachments)
-watch(internalAnswers, (val) => {
+// Emit updates when internal answers change
+function updateAnswer(questionId: string, value: string | string[] | number | null) {
+  if (!internalAnswers.value[questionId]) {
+    internalAnswers.value[questionId] = { value, attachments: [] }
+  } else {
+    internalAnswers.value[questionId].value = value
+  }
+  answerVersion.value++  // Trigger logic re-evaluation
+  emitUpdate()
+}
+
+function updateAttachments(questionId: string, attachments: AttachmentInfo[]) {
+  if (!internalAnswers.value[questionId]) {
+    internalAnswers.value[questionId] = { value: null, attachments }
+  } else {
+    internalAnswers.value[questionId].attachments = attachments
+  }
+  emitUpdate()
+}
+
+function emitUpdate() {
   const plain: Record<string, unknown> = {}
-  for (const [key, answer] of Object.entries(val)) {
-    // Include attachments if present
+  for (const [key, answer] of Object.entries(internalAnswers.value)) {
     if (answer.attachments && answer.attachments.length > 0) {
       plain[key] = { value: answer.value, attachments: answer.attachments }
     } else {
@@ -144,7 +181,7 @@ watch(internalAnswers, (val) => {
     }
   }
   emit('update:answers', plain)
-}, { deep: true })
+}
 
 // Get attachment config for an element
 function getAttachmentConfig(element: SurveyElement): AttachmentConfig | undefined {

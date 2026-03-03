@@ -13,6 +13,11 @@
         />
       </div>
       <div class="header-right">
+        <a-button @click="logicModalVisible = true">
+          <template #icon><BranchesOutlined /></template>
+          逻辑跳转
+          <a-badge v-if="surveyLogic.rules.length > 0" :count="surveyLogic.rules.length" :offset="[5, -5]" />
+        </a-button>
         <a-button @click="handlePreview">
           <template #icon><EyeOutlined /></template>
           预览
@@ -151,6 +156,21 @@
       </div>
     </div>
 
+    <!-- 逻辑跳转模态框 -->
+    <a-modal
+      v-model:open="logicModalVisible"
+      title="逻辑跳转规则"
+      :width="700"
+      :footer="null"
+    >
+      <LogicRuleEditor
+        :logic="surveyLogic"
+        :elements="elements"
+        @update:logic="surveyLogic = $event"
+      />
+    </a-modal>
+
+    <!-- 预览模态框 -->
     <a-modal
       v-model:open="previewVisible"
       title="预览"
@@ -182,12 +202,14 @@ import {
   BorderOutlined,
   FormOutlined,
   DownCircleOutlined,
-  StarOutlined
+  StarOutlined,
+  BranchesOutlined
 } from '@ant-design/icons-vue'
 import SurveyRenderer from '@/components/survey/SurveyRenderer.vue'
+import LogicRuleEditor from '@/components/survey/LogicRuleEditor.vue'
 import OptionsEditor from '@/components/survey/OptionsEditor.vue'
 import QuestionAttachmentUpload from '@/components/survey/QuestionAttachmentUpload.vue'
-import type { SurveyElement, SurveySchema, QuestionAttachment } from '@/types/survey'
+import type { SurveyElement, SurveySchema, QuestionAttachment, SurveyLogic } from '@/types/survey'
 
 const router = useRouter()
 const route = useRoute()
@@ -198,10 +220,12 @@ const isEdit = computed(() => !!projectId.value)
 
 const projectName = ref('')
 const elements = ref<SurveyElement[]>([])
+const surveyLogic = ref<SurveyLogic>({ rules: [] })
 const selectedIndex = ref(-1)
 const saving = ref(false)
 const publishing = ref(false)
 const previewVisible = ref(false)
+const logicModalVisible = ref(false)
 
 const selectedElement = computed(() => {
   if (selectedIndex.value >= 0 && selectedIndex.value < elements.value.length) {
@@ -275,7 +299,8 @@ const questionAttachments = computed<QuestionAttachment[]>({
 const surveyData = computed(() => ({
   id: projectId.value || 'preview',
   title: projectName.value,
-  pages: [{ id: 'page1', title: 'Page 1', elements: elements.value }]
+  pages: [{ id: 'page1', title: 'Page 1', elements: elements.value }],
+  logic: surveyLogic.value
 }))
 
 const previewAnswers = computed(() => {
@@ -335,12 +360,42 @@ function selectQuestion(index: number) {
 }
 
 function removeQuestion(index: number) {
+  const deletedId = elements.value[index]?.id
   elements.value.splice(index, 1)
   if (selectedIndex.value === index) {
     selectedIndex.value = -1
   } else if (selectedIndex.value > index) {
     selectedIndex.value--
   }
+  // Clean up logic rules referencing deleted question
+  if (deletedId) {
+    cleanupLogicRules(deletedId)
+  }
+}
+
+// Remove references to deleted question from logic rules
+function cleanupLogicRules(deletedId: string) {
+  const rulesToRemove: string[] = []
+
+  for (const rule of surveyLogic.value.rules) {
+    // Remove from target IDs
+    rule.action.targetIds = rule.action.targetIds.filter(id => id !== deletedId)
+
+    // Remove conditions referencing deleted question
+    rule.condition.conditions = rule.condition.conditions.filter(
+      c => c.questionId !== deletedId
+    )
+
+    // Mark rule for removal if no targets or no conditions left
+    if (rule.action.targetIds.length === 0 || rule.condition.conditions.length === 0) {
+      rulesToRemove.push(rule.id)
+    }
+  }
+
+  // Remove empty rules
+  surveyLogic.value.rules = surveyLogic.value.rules.filter(
+    r => !rulesToRemove.includes(r.id)
+  )
 }
 
 function moveUp(index: number) {
@@ -382,7 +437,8 @@ async function handleSave() {
     const survey: SurveySchema = {
       id: projectId.value || uuidv4(),
       title: projectName.value,
-      pages: [{ id: 'page1', title: 'Page 1', elements: elements.value }]
+      pages: [{ id: 'page1', title: 'Page 1', elements: elements.value }],
+      logic: surveyLogic.value
     }
 
     if (isEdit.value) {
@@ -435,6 +491,9 @@ onMounted(async () => {
         const survey = project.survey as SurveySchema
         if (survey.pages && survey.pages[0]) {
           elements.value = survey.pages[0].elements || []
+        }
+        if (survey.logic) {
+          surveyLogic.value = survey.logic
         }
       }
     } catch {

@@ -22,6 +22,7 @@ export interface SurveySchema {
   id: string
   title: string
   pages: SurveyPage[]
+  logic?: SurveyLogic
 }
 
 export interface SurveyPage {
@@ -122,27 +123,51 @@ export interface SurveySettingRequest {
   setting: SurveySetting
 }
 
-// Survey logic
-export interface SurveyLogic {
-  projectId: string
-  rules: LogicRule[]
-}
+// Logic operator types
+export type LogicOperator =
+  | 'eq'        // equals (radio, dropdown)
+  | 'neq'       // not equals
+  | 'in'        // contains (checkbox)
+  | 'not_in'    // not contains
+  | 'gt'        // greater than (rating)
+  | 'gte'       // greater than or equal
+  | 'lt'        // less than
+  | 'lte'       // less than or equal
+  | 'empty'     // is empty
+  | 'not_empty' // is not empty
 
-export interface LogicRule {
-  id: string
-  condition: LogicCondition
-  action: LogicAction
-}
+// Logic action type
+export type LogicActionType = 'show' | 'hide'
 
+// Single condition
 export interface LogicCondition {
   questionId: string
-  operator: string
-  value: any
+  operator: LogicOperator
+  value: string | number | string[]
 }
 
-export interface LogicAction {
-  type: string
-  targetId: string
+// Condition group (supports AND/OR combination)
+export interface LogicConditionGroup {
+  id: string
+  type: 'and' | 'or'
+  conditions: LogicCondition[]
+}
+
+// Logic rule with condition group and action
+export interface LogicRule {
+  id: string
+  name?: string
+  condition: LogicConditionGroup
+  action: {
+    type: LogicActionType
+    targetIds: string[]
+  }
+  enabled: boolean
+}
+
+// Survey logic configuration
+export interface SurveyLogic {
+  rules: LogicRule[]
 }
 
 export interface SurveyLogicRequest {

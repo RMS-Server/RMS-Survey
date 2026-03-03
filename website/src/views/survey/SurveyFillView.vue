@@ -30,6 +30,7 @@ import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { surveyApi } from '@/api/survey'
 import SurveyRenderer from '@/components/survey/SurveyRenderer.vue'
+import { useLogicEvaluator } from '@/composables/useLogicEvaluator'
 import type { SurveySchema, SurveyElement, AnswerValue } from '@/types/survey'
 
 const route = useRoute()
@@ -47,6 +48,10 @@ const surveySchema = computed(() => {
   if (!survey.value?.survey) return { id: '', title: '', pages: [] }
   return survey.value.survey
 })
+
+const surveySchemaComputed = computed(() => surveySchema.value)
+const answersComputed = computed(() => answers.value)
+const { isQuestionVisible } = useLogicEvaluator(surveySchemaComputed, answersComputed)
 
 onMounted(() => {
   loadSurvey()
@@ -88,6 +93,9 @@ async function handleSubmit(submittedAnswers: Record<string, AnswerValue>) {
     if (surveyData.pages) {
       for (const page of surveyData.pages) {
         for (const el of page.elements || []) {
+          // Skip validation for hidden questions
+          if (!isQuestionVisible(el.id)) continue
+
           if (el.required) {
             const answer = submittedAnswers[el.id]
             const value = answer?.value
