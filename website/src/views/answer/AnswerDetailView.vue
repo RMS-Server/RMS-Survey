@@ -43,6 +43,22 @@
             <div class="answer-label">{{ getElementTitle(key as string) }}</div>
             <div class="answer-value">
               {{ formatValue(value) }}
+              <div v-if="getAttachments(key as string).length > 0" class="attachment-list">
+                <div class="attachment-label">
+                  <PaperClipOutlined /> 附件：
+                </div>
+                <div class="attachment-items">
+                  <a
+                    v-for="att in getAttachments(key as string)"
+                    :key="att.fileId"
+                    :href="getAttachmentUrl(att.fileId)"
+                    target="_blank"
+                    class="attachment-link"
+                  >
+                    {{ att.fileName }} ({{ formatFileSize(att.fileSize) }})
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -57,9 +73,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { answerApi } from '@/api/answer'
 import { projectApi } from '@/api/project'
-import { ArrowLeftOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, PaperClipOutlined } from '@ant-design/icons-vue'
 import type { AnswerView } from '@/types/answer'
-import type { SurveySchema, SurveyElement } from '@/types/survey'
+import type { SurveySchema, SurveyElement, AttachmentInfo } from '@/types/survey'
 
 const route = useRoute()
 const router = useRouter()
@@ -70,6 +86,11 @@ const loading = ref(false)
 const answer = ref<AnswerView | null>(null)
 const projectName = ref('')
 const elementMap = ref<Map<string, SurveyElement>>(new Map())
+
+interface AnswerValueWithAttachments {
+  value: unknown
+  attachments?: AttachmentInfo[]
+}
 
 const answerData = computed(() => {
   if (!answer.value?.answer) return {}
@@ -124,9 +145,33 @@ function formatDate(dateStr: string) {
 
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) return ''
+  // Check if this is an answer with attachments structure
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    const answerVal = value as AnswerValueWithAttachments
+    return formatValue(answerVal.value)
+  }
   if (Array.isArray(value)) return value.join(', ')
   if (typeof value === 'object') return JSON.stringify(value, null, 2)
   return String(value)
+}
+
+function getAttachments(key: string): AttachmentInfo[] {
+  const value = answerData.value[key]
+  if (typeof value === 'object' && value !== null && 'attachments' in value) {
+    const answerVal = value as AnswerValueWithAttachments
+    return answerVal.attachments || []
+  }
+  return []
+}
+
+function getAttachmentUrl(fileId: string): string {
+  return `/api/public/preview/${fileId}`
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 </script>
 
@@ -165,5 +210,38 @@ function formatValue(value: unknown): string {
 
 .answer-value {
   flex: 1;
+}
+
+.attachment-list {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.attachment-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.attachment-label .anticon {
+  margin-right: 4px;
+}
+
+.attachment-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachment-link {
+  color: #1890ff;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.attachment-link:hover {
+  text-decoration: underline;
 }
 </style>

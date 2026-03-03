@@ -190,13 +190,24 @@ func (s *UserService) ListUsers(req dto.UserQueryRequest) (dto.PageResponse[dto.
 }
 
 // CreateUser creates a new user with an associated account.
+// Password may be RSA-encrypted (base64) or plaintext.
 func (s *UserService) CreateUser(req dto.CreateUserRequest) error {
 	// Check username uniqueness
 	if _, err := s.repo.FindByUsername(req.Username); err == nil {
 		return ErrUsernameExists
 	}
 
-	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	// Attempt RSA decryption; fall back to plaintext for non-encrypted clients.
+	password := req.Password
+	privKey, privKeyErr := s.getPrivateKey()
+	if privKeyErr == nil && privKey != "" {
+		decrypted, decryptErr := rsapkg.Decrypt(privKey, req.Password)
+		if decryptErr == nil {
+			password = decrypted
+		}
+	}
+
+	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
@@ -311,15 +322,37 @@ func (s *UserService) DeleteUser(id string) error {
 }
 
 // UpdatePassword changes a user's password after verifying the old one.
+// Passwords may be RSA-encrypted (base64) or plaintext.
 func (s *UserService) UpdatePassword(userID, oldPwd, newPwd string) error {
 	account, err := s.repo.FindAccountByUserID(userID)
 	if err != nil {
 		return ErrUserNotFound
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(account.AuthSecret), []byte(oldPwd)); err != nil {
+
+	// Attempt RSA decryption for old password
+	oldPassword := oldPwd
+	privKey, privKeyErr := s.getPrivateKey()
+	if privKeyErr == nil && privKey != "" {
+		decrypted, decryptErr := rsapkg.Decrypt(privKey, oldPwd)
+		if decryptErr == nil {
+			oldPassword = decrypted
+		}
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(account.AuthSecret), []byte(oldPassword)); err != nil {
 		return ErrInvalidPassword
 	}
-	hashed, err := bcrypt.GenerateFromPassword([]byte(newPwd), bcrypt.DefaultCost)
+
+	// Attempt RSA decryption for new password
+	newPassword := newPwd
+	if privKeyErr == nil && privKey != "" {
+		decrypted, decryptErr := rsapkg.Decrypt(privKey, newPwd)
+		if decryptErr == nil {
+			newPassword = decrypted
+		}
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}

@@ -123,8 +123,11 @@
               <a-input-number v-model:value="selectedElement.max" :min="2" />
             </a-form-item>
           </template>
-          <!-- 附件设置 -->
-          <a-divider>附件设置</a-divider>
+          <!-- 题目附件（答题者可见） -->
+          <a-divider>题目附件</a-divider>
+          <QuestionAttachmentUpload v-model="questionAttachments" />
+          <!-- 答题附件设置 -->
+          <a-divider>答题附件</a-divider>
           <a-form-item label="允许上传附件">
             <a-switch v-model:checked="attachmentEnabled" />
           </a-form-item>
@@ -138,8 +141,8 @@
             <a-form-item label="允许的文件类型">
               <a-select
                 v-model:value="attachmentTypes"
-                mode="multiple"
-                placeholder="选择允许的文件类型"
+                mode="tags"
+                placeholder="输入或选择文件类型，如 .pdf, .custom"
                 :options="fileTypeOptions"
               />
             </a-form-item>
@@ -183,7 +186,8 @@ import {
 } from '@ant-design/icons-vue'
 import SurveyRenderer from '@/components/survey/SurveyRenderer.vue'
 import OptionsEditor from '@/components/survey/OptionsEditor.vue'
-import type { SurveyElement, SurveySchema } from '@/types/survey'
+import QuestionAttachmentUpload from '@/components/survey/QuestionAttachmentUpload.vue'
+import type { SurveyElement, SurveySchema, QuestionAttachment } from '@/types/survey'
 
 const router = useRouter()
 const route = useRoute()
@@ -255,6 +259,15 @@ const attachmentTypes = computed({
   set: (val) => {
     if (selectedElement.value?.attachment) {
       selectedElement.value.attachment.allowedTypes = val
+    }
+  }
+})
+
+const questionAttachments = computed<QuestionAttachment[]>({
+  get: () => selectedElement.value?.questionAttachments ?? [],
+  set: (val) => {
+    if (selectedElement.value) {
+      selectedElement.value.questionAttachments = val
     }
   }
 })

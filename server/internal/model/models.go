@@ -112,13 +112,13 @@ func (Role) TableName() string { return "t_role" }
 type SysInfo struct {
 	BaseModelNoSoftDelete
 	Name         string `gorm:"column:name;size:64" json:"name"`
-	Description  string `gorm:"column:description;size:128" json:"description"`
+	Description  string `gorm:"column:description;type:text" json:"description"`
 	Avatar       string `gorm:"column:avatar;size:64" json:"avatar"`
 	Locale       string `gorm:"column:locale;size:64" json:"locale"`
 	Version      string `gorm:"column:version;size:64" json:"version"`
-	Setting      string `gorm:"column:setting;size:1024" json:"setting"`
-	AISetting    string `gorm:"column:ai_setting;size:1024" json:"aiSetting"`
-	RegisterInfo string `gorm:"column:register_info;size:1024" json:"registerInfo"`
+	Setting      string `gorm:"column:setting;type:text" json:"setting"`
+	AISetting    string `gorm:"column:ai_setting;type:text" json:"aiSetting"`
+	RegisterInfo string `gorm:"column:register_info;type:text" json:"registerInfo"`
 	IsDefault    *bool  `gorm:"column:is_default" json:"isDefault"`
 }
 

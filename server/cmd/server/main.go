@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/rms-survey/server/internal/config"
+	"github.com/rms-survey/server/internal/model"
 	"github.com/rms-survey/server/internal/router"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -20,6 +21,25 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
+
+	// Auto migrate database tables
+	if err := db.AutoMigrate(
+		&model.User{},
+		&model.Account{},
+		&model.UserRole{},
+		&model.Role{},
+		&model.Project{},
+		&model.ProjectPartner{},
+		&model.Answer{},
+		&model.File{},
+		&model.Template{},
+		&model.SysInfo{},
+		&model.CommDictItem{},
+	); err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
+	}
+	log.Println("database migration completed")
+
 	r := router.Setup(db)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

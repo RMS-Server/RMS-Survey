@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rms-survey/server/internal/dto"
@@ -208,13 +210,24 @@ func (h *SurveyHandler) Preview(c *gin.Context) {
 		return
 	}
 	attachmentID := c.Param("attachmentId")
-	data, contentType, err := h.fileSvc.LoadFileBytes(attachmentID)
+	data, contentType, originalName, err := h.fileSvc.LoadFileBytes(attachmentID)
 	if err != nil {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
+
+	// Check if this is an image type (inline display)
+	isImage := strings.HasPrefix(contentType, "image/")
+
 	c.Header("Cache-Control", "max-age=2592000")
-	c.Data(200, contentType, data)
+	if isImage {
+		// Images: display inline
+		c.Data(200, contentType, data)
+	} else {
+		// Other files: trigger download with original filename
+		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, originalName))
+		c.Data(200, contentType, data)
+	}
 }
 
 func (h *SurveyHandler) LoadQuery(c *gin.Context) {

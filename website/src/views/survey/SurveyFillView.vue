@@ -15,6 +15,7 @@
           :survey="surveySchema"
           :answers="answers"
           :project-id="surveyId"
+          @update:answers="answers = $event"
           @submit="handleSubmit"
           @temp-save="handleTempSave"
         />
@@ -29,7 +30,7 @@ import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { surveyApi } from '@/api/survey'
 import SurveyRenderer from '@/components/survey/SurveyRenderer.vue'
-import type { SurveySchema, SurveyElement } from '@/types/survey'
+import type { SurveySchema, SurveyElement, AnswerValue } from '@/types/survey'
 
 const route = useRoute()
 
@@ -80,7 +81,7 @@ async function loadSurvey() {
   }
 }
 
-async function handleSubmit() {
+async function handleSubmit(submittedAnswers: Record<string, AnswerValue>) {
   // Validate required fields
   if (survey.value?.survey) {
     const surveyData = survey.value.survey
@@ -88,8 +89,10 @@ async function handleSubmit() {
       for (const page of surveyData.pages) {
         for (const el of page.elements || []) {
           if (el.required) {
-            const answer = answers.value[el.id]
-            if (answer === '' || answer === undefined || (Array.isArray(answer) && answer.length === 0)) {
+            const answer = submittedAnswers[el.id]
+            const value = answer?.value
+            if (value === '' || value === undefined || value === null ||
+                (Array.isArray(value) && value.length === 0)) {
               message.warning(`请回答: ${el.title || `题目 ${el.id}`}`)
               return
             }
@@ -102,7 +105,7 @@ async function handleSubmit() {
   try {
     await surveyApi.saveAnswer({
       projectId: surveyId.value,
-      answer: answers.value
+      answer: submittedAnswers
     })
     message.success('提交成功')
   } catch {
@@ -110,11 +113,11 @@ async function handleSubmit() {
   }
 }
 
-async function handleTempSave() {
+async function handleTempSave(submittedAnswers: Record<string, AnswerValue>) {
   try {
     await surveyApi.tempSaveAnswer({
       projectId: surveyId.value,
-      answer: answers.value,
+      answer: submittedAnswers,
       tempSave: 1
     })
     message.success('保存成功')

@@ -14,6 +14,31 @@
           <span v-if="element.required" class="required-mark">*</span>
         </div>
 
+        <!-- Question attachments (uploaded by creator, visible to respondents) -->
+        <div v-if="element.questionAttachments?.length" class="question-attachments-display">
+          <div
+            v-for="file in element.questionAttachments"
+            :key="file.fileId"
+            class="question-attachment-item"
+          >
+            <a-image
+              v-if="isImage(file.fileType)"
+              :src="getPreviewUrl(file.fileId)"
+              class="attachment-image"
+            />
+            <a-button
+              v-else
+              type="link"
+              :href="getPreviewUrl(file.fileId)"
+              target="_blank"
+              class="attachment-download-btn"
+            >
+              <DownloadOutlined />
+              {{ file.fileName }}
+            </a-button>
+          </div>
+        </div>
+
         <div class="question-content">
           <RadioElement
             v-if="element.type === 'radio'"
@@ -69,6 +94,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { DownloadOutlined } from '@ant-design/icons-vue'
 import type { SurveySchema, SurveyElement, AttachmentConfig, AnswerValue } from '@/types/survey'
 import RadioElement from './elements/RadioElement.vue'
 import CheckboxElement from './elements/CheckboxElement.vue'
@@ -87,6 +113,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'submit', answers: Record<string, AnswerValue>): void
   (e: 'tempSave', answers: Record<string, AnswerValue>): void
+  (e: 'update:answers', answers: Record<string, unknown>): void
 }>()
 
 // Internal answers with attachment support
@@ -105,9 +132,33 @@ watch(() => props.answers, (val) => {
   internalAnswers.value = converted
 }, { immediate: true, deep: true })
 
+// Sync internalAnswers back to parent (including attachments)
+watch(internalAnswers, (val) => {
+  const plain: Record<string, unknown> = {}
+  for (const [key, answer] of Object.entries(val)) {
+    // Include attachments if present
+    if (answer.attachments && answer.attachments.length > 0) {
+      plain[key] = { value: answer.value, attachments: answer.attachments }
+    } else {
+      plain[key] = answer.value
+    }
+  }
+  emit('update:answers', plain)
+}, { deep: true })
+
 // Get attachment config for an element
 function getAttachmentConfig(element: SurveyElement): AttachmentConfig | undefined {
   return element.attachment?.enabled ? element.attachment : undefined
+}
+
+// Check if file type is an image
+function isImage(fileType: string): boolean {
+  return ['.jpg', '.jpeg', '.png', '.gif'].includes(fileType.toLowerCase())
+}
+
+// Get preview URL for a file
+function getPreviewUrl(fileId: string): string {
+  return `/api/public/preview/${fileId}`
 }
 
 function handleSubmit() {
@@ -160,6 +211,31 @@ function handleTempSave() {
 .required-mark {
   color: #ff4d4f;
   margin-left: 4px;
+}
+
+.question-attachments-display {
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.question-attachment-item {
+  display: inline-block;
+}
+
+.attachment-image {
+  max-width: 300px;
+  max-height: 300px;
+  border-radius: 4px;
+}
+
+.attachment-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  height: auto;
 }
 
 .question-content {

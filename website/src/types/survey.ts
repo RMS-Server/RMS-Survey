@@ -42,6 +42,7 @@ export interface SurveyElement {
   min?: number
   max?: number
   attachment?: AttachmentConfig
+  questionAttachments?: QuestionAttachment[]  // Files uploaded by creator for display
 }
 
 export interface SurveyOption {
@@ -63,6 +64,13 @@ export interface AttachmentInfo {
   fileId: string
   fileName: string
   fileSize: number
+  fileType: string
+}
+
+// Question attachment (uploaded by survey creator for display)
+export interface QuestionAttachment {
+  fileId: string
+  fileName: string
   fileType: string
 }
 

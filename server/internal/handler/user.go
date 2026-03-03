@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	nanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/rms-survey/server/internal/config"
 	"github.com/rms-survey/server/internal/dto"
 	jwtpkg "github.com/rms-survey/server/internal/pkg/jwt"
 	"github.com/rms-survey/server/internal/pkg/cache"
@@ -22,8 +23,6 @@ import (
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
-
-const cookieName = "sk-token"
 
 // captchaStore holds captcha answers with automatic TTL eviction via bigcache.
 var captchaStore = cache.New(5 * time.Minute)
@@ -99,7 +98,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     cookieName,
+		Name:     config.C.JWT.CookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
@@ -113,7 +112,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 // Logout handles POST /api/public/logout
 func (h *UserHandler) Logout(c *gin.Context) {
 	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     cookieName,
+		Name:     config.C.JWT.CookieName,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,

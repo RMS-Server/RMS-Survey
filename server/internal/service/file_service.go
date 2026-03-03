@@ -117,26 +117,27 @@ func (s *FileService) GetFile(id string) (io.ReadCloser, string, error) {
 	return s.storage.Get(id)
 }
 
-// LoadFileBytes reads a file by ID and returns its bytes and content-type.
-func (s *FileService) LoadFileBytes(id string) ([]byte, string, error) {
+// LoadFileBytes reads a file by ID and returns its bytes, content-type, and original filename.
+func (s *FileService) LoadFileBytes(id string) ([]byte, string, string, error) {
 	rc, _, err := s.storage.Get(id)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	defer rc.Close()
 	data, err := io.ReadAll(rc)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	f, err := s.repo.GetByID(id)
-	contentType := "application/octet-stream"
-	if err == nil {
-		ext := filepath.Ext(f.OriginalName)
-		if mt := mime.TypeByExtension(ext); mt != "" {
-			contentType = mt
-		}
+	if err != nil {
+		return nil, "", "", err
 	}
-	return data, contentType, nil
+	contentType := "application/octet-stream"
+	ext := filepath.Ext(f.OriginalName)
+	if mt := mime.TypeByExtension(ext); mt != "" {
+		contentType = mt
+	}
+	return data, contentType, f.OriginalName, nil
 }
 
 // DownloadTemplate returns a named import template file as bytes.
