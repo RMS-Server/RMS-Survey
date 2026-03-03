@@ -82,3 +82,37 @@ export interface RegisterRoleView {
   name: string
   code: string
 }
+
+// User task view
+export interface UserTaskView {
+  id: string
+  projectId: string
+  projectName: string
+  status: number
+  createAt: string
+  updateAt: string
+}
+
+// User task query
+export interface UserTaskQuery {
+  pageIndex?: number
+  pageSize?: number
+  status?: number
+}
+
+// System info update request
+export interface SystemInfoRequest {
+  name?: string
+  description?: string
+  avatar?: string
+}
+
+// AI settings
+export interface AISetting {
+  enabled: boolean
+  provider?: string
+  model?: string
+  apiKey?: string
+  baseUrl?: string
+  [key: string]: any
+}

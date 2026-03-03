@@ -54,6 +54,26 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/answer/AnswerDetailView.vue')
       },
       {
+        path: 'template',
+        name: 'TemplateList',
+        component: () => import('@/views/template/TemplateListView.vue')
+      },
+      {
+        path: 'template/create',
+        name: 'TemplateCreate',
+        component: () => import('@/views/template/TemplateEditView.vue')
+      },
+      {
+        path: 'template/:id/edit',
+        name: 'TemplateEdit',
+        component: () => import('@/views/template/TemplateEditView.vue')
+      },
+      {
+        path: 'trash',
+        name: 'TrashList',
+        component: () => import('@/views/trash/TrashListView.vue')
+      },
+      {
         path: 'system/user',
         name: 'UserList',
         component: () => import('@/views/system/UserListView.vue')

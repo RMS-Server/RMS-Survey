@@ -32,3 +32,19 @@ export interface DownloadQuery {
   projectId: string
   locale?: string
 }
+
+// Answer upload result
+export interface AnswerUploadResult {
+  projectId: string
+  schema: object
+  importedCount: number
+  errors?: string[]
+}
+
+// Answer create/update request
+export interface AnswerCreateRequest {
+  id?: string
+  projectId: string
+  answer: object
+  metaInfo?: object
+}

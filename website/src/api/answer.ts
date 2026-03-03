@@ -1,5 +1,5 @@
 import request from './index'
-import type { AnswerQuery, AnswerView, DownloadQuery } from '@/types/answer'
+import type { AnswerQuery, AnswerView, DownloadQuery, AnswerUploadResult, AnswerCreateRequest } from '@/types/answer'
 import type { PageResponse } from '@/types/api'
 
 export const answerApi = {
@@ -42,6 +42,47 @@ export const answerApi = {
     formData.append('projectId', projectId)
     formData.append('file', file)
     return request.post('/answer/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+
+  // Get deleted answers (recycle bin)
+  getTrash(params: AnswerQuery): Promise<PageResponse<AnswerView>> {
+    return request.get('/answer/trash', { params })
+  },
+
+  // Manually create answer
+  create(data: AnswerCreateRequest): Promise<void> {
+    return request.post('/answer/create', data)
+  },
+
+  // Manually update answer
+  update(data: AnswerCreateRequest): Promise<void> {
+    return request.post('/answer/update', data)
+  },
+
+  // Permanently delete answer
+  destroy(id: string): Promise<void> {
+    return request.post('/answer/destroy', { id })
+  },
+
+  // Batch destroy answers
+  batchDestroy(ids: string[]): Promise<void> {
+    return request.post('/answer/destroy', { ids })
+  },
+
+  // Upload answers from Excel (extended version)
+  uploadAnswers(projectId: string, file: File, autoSchema?: boolean, parentId?: string): Promise<AnswerUploadResult> {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('projectId', projectId)
+    if (autoSchema !== undefined) {
+      formData.append('autoSchema', String(autoSchema))
+    }
+    if (parentId) {
+      formData.append('parentId', parentId)
+    }
+    return request.post('/answer/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   }

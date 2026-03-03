@@ -1,5 +1,18 @@
 import request from './index'
-import type { SurveyLoadRequest, SurveyView, PublicAnswerView, AttachmentInfo } from '@/types/survey'
+import type {
+  SurveyLoadRequest,
+  SurveyView,
+  PublicAnswerView,
+  AttachmentInfo,
+  SurveyStatistics,
+  SurveySetting,
+  SurveySettingRequest,
+  SurveyLogic,
+  SurveyLogicRequest,
+  QueryRequest,
+  DictRequest,
+  ProjectValidation
+} from '@/types/survey'
 import type { AnswerRequest } from '@/types/answer'
 
 export const surveyApi = {
@@ -43,5 +56,65 @@ export const surveyApi = {
         'Content-Type': 'multipart/form-data'
       }
     })
+  },
+
+  // Validate survey access
+  validateProject(data: SurveyLoadRequest): Promise<ProjectValidation> {
+    return request.post('/public/validateProject', data)
+  },
+
+  // Get survey statistics
+  getStatistics(data: SurveyLoadRequest): Promise<SurveyStatistics> {
+    return request.post('/public/statistics', data)
+  },
+
+  // Preview attachment
+  getPreviewUrl(attachmentId: string): string {
+    return `/api/public/preview/${attachmentId}`
+  },
+
+  // Load query data
+  loadQuery(data: QueryRequest): Promise<any[]> {
+    return request.post('/public/loadQuery', data)
+  },
+
+  // Get query result
+  getQueryResult(data: QueryRequest): Promise<any> {
+    return request.post('/public/getQueryResult', data)
+  },
+
+  // Load dictionary data
+  loadDict(data: DictRequest): Promise<any[]> {
+    return request.post('/public/loadDict', data)
+  },
+
+  // Load exam result
+  loadExamResult(data: { projectId: string; answerId: string }): Promise<any> {
+    return request.post('/public/loadExamResult', data)
+  },
+
+  // Load link result
+  loadLinkResult(data: { projectId: string; answerId: string }): Promise<any> {
+    return request.post('/public/loadLinkResult', data)
+  },
+
+  // Get survey settings
+  getSetting(projectId: string): Promise<SurveySetting> {
+    return request.get('/survey/setting', { params: { projectId } })
+  },
+
+  // Update survey settings
+  updateSetting(data: SurveySettingRequest): Promise<void> {
+    return request.post('/survey/setting', data)
+  },
+
+  // Get survey logic rules
+  getLogic(projectId: string): Promise<SurveyLogic> {
+    return request.get('/survey/logic', { params: { projectId } })
+  },
+
+  // Update survey logic rules
+  updateLogic(data: SurveyLogicRequest): Promise<void> {
+    return request.post('/survey/logic', data)
   }
 }

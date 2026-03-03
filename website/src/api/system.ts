@@ -1,5 +1,5 @@
 import request from './index'
-import type { RoleView } from '@/types/user'
+import type { RoleView, UserView, UserQueryRequest, CreateUserRequest, UpdateUserRequest, SystemInfoRequest, AISetting } from '@/types/user'
 import type { PageResponse } from '@/types/api'
 
 // Role APIs
@@ -29,5 +29,32 @@ export const roleApi = {
 export const systemApi = {
   getSysInfo(): Promise<{ name: string; description: string; avatar: string }> {
     return request.get('/system')
+  },
+
+  // Update system info
+  updateSysInfo(data: SystemInfoRequest): Promise<void> {
+    return request.post('/system/update', data)
+  },
+
+  // Get AI settings
+  getAISetting(): Promise<AISetting> {
+    return request.get('/system/aiSetting')
+  },
+
+  // System user management (admin)
+  listSystemUsers(params: UserQueryRequest): Promise<PageResponse<UserView>> {
+    return request.get('/system/user/list', { params })
+  },
+
+  createSystemUser(data: CreateUserRequest): Promise<void> {
+    return request.post('/system/user/create', data)
+  },
+
+  updateSystemUser(data: UpdateUserRequest): Promise<void> {
+    return request.post('/system/user/update', data)
+  },
+
+  deleteSystemUser(id: string): Promise<void> {
+    return request.post('/system/user/delete', { id })
   }
 }

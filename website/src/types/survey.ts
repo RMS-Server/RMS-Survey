@@ -71,3 +71,92 @@ export interface AnswerValue {
   value: string | string[] | number | null
   attachments?: AttachmentInfo[]
 }
+
+// Survey statistics
+export interface SurveyStatistics {
+  totalAnswers: number
+  completedAnswers: number
+  tempSavedAnswers: number
+  questionStats: QuestionStat[]
+}
+
+export interface QuestionStat {
+  questionId: string
+  questionTitle: string
+  answerCount: number
+  options?: OptionStat[]
+}
+
+export interface OptionStat {
+  optionId: string
+  optionText: string
+  count: number
+  percentage: number
+}
+
+// Survey settings
+export interface SurveySetting {
+  projectId: string
+  startTime?: string
+  endTime?: string
+  answerLimit?: number
+  showProgressBar?: boolean
+  showQuestionNumber?: boolean
+  shuffleQuestions?: boolean
+  allowBack?: boolean
+  allowSave?: boolean
+  captchaRequired?: boolean
+  [key: string]: any
+}
+
+export interface SurveySettingRequest {
+  projectId: string
+  setting: SurveySetting
+}
+
+// Survey logic
+export interface SurveyLogic {
+  projectId: string
+  rules: LogicRule[]
+}
+
+export interface LogicRule {
+  id: string
+  condition: LogicCondition
+  action: LogicAction
+}
+
+export interface LogicCondition {
+  questionId: string
+  operator: string
+  value: any
+}
+
+export interface LogicAction {
+  type: string
+  targetId: string
+}
+
+export interface SurveyLogicRequest {
+  projectId: string
+  logic: SurveyLogic
+}
+
+// Query/Dict request types
+export interface QueryRequest {
+  projectId: string
+  questionId: string
+  keyword?: string
+}
+
+export interface DictRequest {
+  dictCode: string
+  keyword?: string
+}
+
+// Public answer view for validation
+export interface ProjectValidation {
+  valid: boolean
+  message?: string
+  project?: SurveyView
+}

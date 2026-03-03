@@ -23,6 +23,18 @@
           </template>
           <span>答题管理</span>
         </a-menu-item>
+        <a-menu-item key="template">
+          <template #icon>
+            <CopyOutlined />
+          </template>
+          <span>模板管理</span>
+        </a-menu-item>
+        <a-menu-item key="trash">
+          <template #icon>
+            <DeleteOutlined />
+          </template>
+          <span>回收站</span>
+        </a-menu-item>
         <a-sub-menu key="system">
           <template #icon>
             <SettingOutlined />
@@ -68,7 +80,9 @@ import {
   SolutionOutlined,
   SettingOutlined,
   UserOutlined,
-  LogoutOutlined
+  LogoutOutlined,
+  CopyOutlined,
+  DeleteOutlined
 } from '@ant-design/icons-vue'
 
 const router = useRouter()
@@ -85,6 +99,10 @@ watch(currentRoute, (path) => {
     selectedKeys.value = ['project']
   } else if (path.startsWith('/answer')) {
     selectedKeys.value = ['answer']
+  } else if (path.startsWith('/template')) {
+    selectedKeys.value = ['template']
+  } else if (path.startsWith('/trash')) {
+    selectedKeys.value = ['trash']
   } else if (path.startsWith('/system/user')) {
     selectedKeys.value = ['system/user']
   } else if (path.startsWith('/system/role')) {

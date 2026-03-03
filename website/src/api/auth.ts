@@ -1,5 +1,5 @@
 import request from './index'
-import type { LoginRequest, LoginResponse, RegisterRequest, UserView, UserQueryRequest, CreateUserRequest, UpdateUserRequest, UserOverview, RegisterRoleView } from '@/types/user'
+import type { LoginRequest, LoginResponse, RegisterRequest, UserView, UserQueryRequest, CreateUserRequest, UpdateUserRequest, UserOverview, RegisterRoleView, UserTaskView, UserTaskQuery } from '@/types/user'
 import type { PageResponse } from '@/types/api'
 
 // Public APIs (no auth required)
@@ -84,5 +84,15 @@ export const userApi = {
     return request.post('/importUser', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
+  },
+
+  // Get current user's tasks
+  listUserTasks(params: UserTaskQuery): Promise<PageResponse<UserTaskView>> {
+    return request.get('/listUserTask', { params })
+  },
+
+  // Get current user's history tasks
+  listHistoryTasks(params: UserTaskQuery): Promise<PageResponse<UserTaskView>> {
+    return request.get('/listHistoryTask', { params })
   }
 }
