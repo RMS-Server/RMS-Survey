@@ -35,8 +35,8 @@ func (s *ProjectService) ListProjects(query *dto.ProjectQuery, userInfo *dto.Use
 }
 
 // GetProject returns a single project by ID.
-func (s *ProjectService) GetProject(id string) (*dto.ProjectView, error) {
-	p, err := s.repo.GetProject(id)
+func (s *ProjectService) GetProject(id string, userInfo *dto.UserInfo) (*dto.ProjectView, error) {
+	p, err := s.repo.HasProjectAccess(id, userInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -45,8 +45,8 @@ func (s *ProjectService) GetProject(id string) (*dto.ProjectView, error) {
 }
 
 // GetSetting returns the setting JSON for a project.
-func (s *ProjectService) GetSetting(projectID string) (json.RawMessage, error) {
-	p, err := s.repo.GetProject(projectID)
+func (s *ProjectService) GetSetting(projectID string, userInfo *dto.UserInfo) (json.RawMessage, error) {
+	p, err := s.repo.HasProjectAccess(projectID, userInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (s *ProjectService) CreateProject(req *dto.ProjectRequest, userInfo *dto.Us
 
 // UpdateProject updates an existing project.
 func (s *ProjectService) UpdateProject(req *dto.ProjectRequest, userInfo *dto.UserInfo) error {
-	p, err := s.repo.GetProject(req.ID)
+	p, err := s.repo.HasProjectAccess(req.ID, userInfo)
 	if err != nil {
 		return err
 	}
@@ -115,8 +115,15 @@ func (s *ProjectService) UpdateProject(req *dto.ProjectRequest, userInfo *dto.Us
 	return s.repo.UpdateProject(p)
 }
 
-// DeleteProject soft-deletes a project.
-func (s *ProjectService) DeleteProject(req *dto.ProjectRequest) error {
+// DeleteProject soft-deletes a project. Only owner can delete.
+func (s *ProjectService) DeleteProject(req *dto.ProjectRequest, userInfo *dto.UserInfo) error {
+	isOwner, err := s.repo.IsProjectOwner(req.ID, userInfo)
+	if err != nil {
+		return err
+	}
+	if !isOwner {
+		return ErrAccessDenied
+	}
 	return s.repo.SoftDeleteProject(req.ID)
 }
 
@@ -133,13 +140,20 @@ func (s *ProjectService) GetDeleted(userInfo *dto.UserInfo) ([]dto.ProjectView, 
 	return views, nil
 }
 
-// DestroyProject permanently deletes projects.
-func (s *ProjectService) DestroyProject(req *dto.ProjectRequest) error {
+// DestroyProject permanently deletes projects. Only owner can destroy.
+func (s *ProjectService) DestroyProject(req *dto.ProjectRequest, userInfo *dto.UserInfo) error {
 	ids := req.IDs
 	if len(ids) == 0 && req.ID != "" {
 		ids = []string{req.ID}
 	}
 	for _, id := range ids {
+		isOwner, err := s.repo.IsProjectOwner(id, userInfo)
+		if err != nil {
+			return err
+		}
+		if !isOwner {
+			return ErrAccessDenied
+		}
 		if err := s.repo.HardDeleteProject(id); err != nil {
 			return err
 		}
@@ -147,13 +161,20 @@ func (s *ProjectService) DestroyProject(req *dto.ProjectRequest) error {
 	return nil
 }
 
-// RestoreProject recovers a project from trash.
-func (s *ProjectService) RestoreProject(req *dto.ProjectRequest) error {
+// RestoreProject recovers a project from trash. Only owner can restore.
+func (s *ProjectService) RestoreProject(req *dto.ProjectRequest, userInfo *dto.UserInfo) error {
 	ids := req.IDs
 	if len(ids) == 0 && req.ID != "" {
 		ids = []string{req.ID}
 	}
 	for _, id := range ids {
+		isOwner, err := s.repo.IsProjectOwner(id, userInfo)
+		if err != nil {
+			return err
+		}
+		if !isOwner {
+			return ErrAccessDenied
+		}
 		if err := s.repo.RestoreProject(id); err != nil {
 			return err
 		}
@@ -161,8 +182,11 @@ func (s *ProjectService) RestoreProject(req *dto.ProjectRequest) error {
 	return nil
 }
 
-// ListPartners returns partners for a project.
-func (s *ProjectService) ListPartners(query *dto.ProjectPartnerQuery) (*dto.PageResponse[dto.ProjectPartnerView], error) {
+// ListPartners returns partners for a project. Requires project access.
+func (s *ProjectService) ListPartners(query *dto.ProjectPartnerQuery, userInfo *dto.UserInfo) (*dto.PageResponse[dto.ProjectPartnerView], error) {
+	if _, err := s.repo.HasProjectAccess(query.ProjectID, userInfo); err != nil {
+		return nil, err
+	}
 	partners, total, err := s.repo.ListPartners(query)
 	if err != nil {
 		return nil, err
@@ -182,8 +206,15 @@ func (s *ProjectService) ListPartners(query *dto.ProjectPartnerQuery) (*dto.Page
 	return &dto.PageResponse[dto.ProjectPartnerView]{List: views, Total: total}, nil
 }
 
-// AddPartner adds a project partner.
+// AddPartner adds a project partner. Only owner can add partners.
 func (s *ProjectService) AddPartner(req *dto.ProjectPartnerRequest, userInfo *dto.UserInfo) error {
+	isOwner, err := s.repo.IsProjectOwner(req.ProjectID, userInfo)
+	if err != nil {
+		return err
+	}
+	if !isOwner {
+		return ErrAccessDenied
+	}
 	id, err := nanoid.New()
 	if err != nil {
 		return fmt.Errorf("generate id: %w", err)
@@ -202,13 +233,28 @@ func (s *ProjectService) AddPartner(req *dto.ProjectPartnerRequest, userInfo *dt
 	return s.repo.CreatePartner(p)
 }
 
-// RemovePartner removes a project partner.
-func (s *ProjectService) RemovePartner(req *dto.ProjectPartnerRequest) error {
+// RemovePartner removes a project partner. Only owner can remove partners.
+func (s *ProjectService) RemovePartner(req *dto.ProjectPartnerRequest, userInfo *dto.UserInfo) error {
+	// First get the partner to find the project ID
+	partner, err := s.repo.GetPartnerByID(req.ID)
+	if err != nil {
+		return err
+	}
+	isOwner, err := s.repo.IsProjectOwner(partner.ProjectID, userInfo)
+	if err != nil {
+		return err
+	}
+	if !isOwner {
+		return ErrAccessDenied
+	}
 	return s.repo.DeletePartner(req.ID)
 }
 
-// ListPartnersAll returns all partners for a project without pagination.
-func (s *ProjectService) ListPartnersAll(projectID string) ([]dto.ProjectPartnerView, error) {
+// ListPartnersAll returns all partners for a project without pagination. Requires project access.
+func (s *ProjectService) ListPartnersAll(projectID string, userInfo *dto.UserInfo) ([]dto.ProjectPartnerView, error) {
+	if _, err := s.repo.HasProjectAccess(projectID, userInfo); err != nil {
+		return nil, err
+	}
 	partners, err := s.repo.ListPartnersAll(projectID)
 	if err != nil {
 		return nil, err

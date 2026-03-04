@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rms-survey/server/internal/dto"
@@ -40,15 +42,31 @@ func (h *AnswerHandler) RegisterRoutes(answer gin.IRouter) {
 	answer.POST("/upload", h.Upload)
 }
 
+// handleAnswerErr maps service errors to HTTP responses.
+func handleAnswerErr(c *gin.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		response.NotFound(c)
+		return true
+	}
+	if errors.Is(err, repository.ErrAccessDenied) || errors.Is(err, service.ErrAccessDenied) || strings.Contains(err.Error(), "access denied") {
+		response.Forbidden(c)
+		return true
+	}
+	response.Fail(c, response.CodeError, err.Error())
+	return true
+}
+
 func (h *AnswerHandler) ListAnswers(c *gin.Context) {
 	var query dto.AnswerQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	result, err := h.svc.ListAnswers(&query)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	result, err := h.svc.ListAnswers(&query, currentUser(c))
+	if handleAnswerErr(c, err) {
 		return
 	}
 	response.OK(c, result)
@@ -60,9 +78,8 @@ func (h *AnswerHandler) ListDeleted(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	result, err := h.svc.ListDeleted(&query)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	result, err := h.svc.ListDeleted(&query, currentUser(c))
+	if handleAnswerErr(c, err) {
 		return
 	}
 	response.OK(c, result)
@@ -74,9 +91,8 @@ func (h *AnswerHandler) GetAnswer(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	result, err := h.svc.GetAnswer(&query)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	result, err := h.svc.GetAnswer(&query, currentUser(c))
+	if handleAnswerErr(c, err) {
 		return
 	}
 	response.OK(c, result)
@@ -88,8 +104,7 @@ func (h *AnswerHandler) CreateAnswer(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.CreateAnswer(&req, currentUser(c)); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleAnswerErr(c, h.svc.CreateAnswer(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -101,8 +116,7 @@ func (h *AnswerHandler) UpdateAnswer(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.UpdateAnswer(&req, currentUser(c)); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleAnswerErr(c, h.svc.UpdateAnswer(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -114,8 +128,7 @@ func (h *AnswerHandler) DeleteAnswer(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.DeleteAnswer(&req); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleAnswerErr(c, h.svc.DeleteAnswer(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -127,8 +140,7 @@ func (h *AnswerHandler) DestroyAnswer(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.DestroyAnswer(&req); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleAnswerErr(c, h.svc.DestroyAnswer(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -140,8 +152,7 @@ func (h *AnswerHandler) RestoreAnswer(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.RestoreAnswer(&req); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleAnswerErr(c, h.svc.RestoreAnswer(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -153,9 +164,8 @@ func (h *AnswerHandler) Download(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	data, filename, err := h.svc.ExportAnswers(&query)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	data, filename, err := h.svc.ExportAnswers(&query, currentUser(c))
+	if handleAnswerErr(c, err) {
 		return
 	}
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))

@@ -1,10 +1,15 @@
 package repository
 
 import (
+	"errors"
+
 	"github.com/rms-survey/server/internal/dto"
 	"github.com/rms-survey/server/internal/model"
 	"gorm.io/gorm"
 )
+
+// ErrAccessDenied is returned when user lacks permission for the operation.
+var ErrAccessDenied = errors.New("access denied")
 
 // ProjectRepo handles database operations for projects.
 type ProjectRepo struct {
@@ -151,9 +156,58 @@ func (r *ProjectRepo) DeletePartner(id string) error {
 	return r.db.Delete(&model.ProjectPartner{}, "id = ?", id).Error
 }
 
+// GetPartnerByID returns a partner by ID.
+func (r *ProjectRepo) GetPartnerByID(id string) (*model.ProjectPartner, error) {
+	var p model.ProjectPartner
+	err := r.db.Where("id = ?", id).First(&p).Error
+	return &p, err
+}
+
 // ListPartnersAll returns all partners for a project without pagination.
 func (r *ProjectRepo) ListPartnersAll(projectID string) ([]model.ProjectPartner, error) {
 	var partners []model.ProjectPartner
 	err := r.db.Where("project_id = ?", projectID).Order("create_at ASC").Find(&partners).Error
 	return partners, err
+}
+
+// HasProjectAccess checks if user has access to the project (owner or partner or admin).
+// Returns the project if access is granted, otherwise returns ErrAccessDenied.
+func (r *ProjectRepo) HasProjectAccess(projectID string, userInfo *dto.UserInfo) (*model.Project, error) {
+	project, err := r.GetProject(projectID)
+	if err != nil {
+		return nil, err
+	}
+	// Admin has full access
+	if isAdmin(userInfo) {
+		return project, nil
+	}
+	// Check if user is owner
+	if project.CreateBy == userInfo.UserID {
+		return project, nil
+	}
+	// Check if user is a partner
+	var count int64
+	if err := r.db.Model(&model.ProjectPartner{}).
+		Where("project_id = ? AND user_id = ?", projectID, userInfo.UserID).
+		Count(&count).Error; err != nil {
+		return nil, err
+	}
+	if count > 0 {
+		return project, nil
+	}
+	return nil, ErrAccessDenied
+}
+
+// IsProjectOwner checks if user is the project owner (or admin).
+// Returns true if the user is the owner or admin, false otherwise.
+func (r *ProjectRepo) IsProjectOwner(projectID string, userInfo *dto.UserInfo) (bool, error) {
+	// Admin is treated as owner
+	if isAdmin(userInfo) {
+		return true, nil
+	}
+	project, err := r.GetProject(projectID)
+	if err != nil {
+		return false, err
+	}
+	return project.CreateBy == userInfo.UserID, nil
 }

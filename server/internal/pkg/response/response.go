@@ -55,3 +55,12 @@ func Forbidden(c *gin.Context) {
 		Data:    nil,
 	})
 }
+
+// NotFound sends a 404 response.
+func NotFound(c *gin.Context) {
+	c.JSON(http.StatusNotFound, Response{
+		Code:    404,
+		Message: "not found",
+		Data:    nil,
+	})
+}

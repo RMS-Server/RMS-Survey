@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,6 +13,9 @@ import (
 	"github.com/rms-survey/server/internal/repository"
 	"github.com/xuri/excelize/v2"
 )
+
+// ErrAccessDenied is returned when user lacks permission.
+var ErrAccessDenied = errors.New("access denied")
 
 // uploadSurveySchema represents the survey structure for Excel import.
 // It uses Pages structure for compatibility with export function.
@@ -57,7 +61,13 @@ func NewAnswerService(repo *repository.AnswerRepo, projectRepo *repository.Proje
 }
 
 // ListAnswers returns a paginated list of answers.
-func (s *AnswerService) ListAnswers(query *dto.AnswerQuery) (*dto.PageResponse[dto.AnswerView], error) {
+func (s *AnswerService) ListAnswers(query *dto.AnswerQuery, userInfo *dto.UserInfo) (*dto.PageResponse[dto.AnswerView], error) {
+	if query.ProjectID == "" {
+		return nil, errors.New("projectId is required")
+	}
+	if _, err := s.projectRepo.HasProjectAccess(query.ProjectID, userInfo); err != nil {
+		return nil, err
+	}
 	answers, total, err := s.repo.ListAnswers(query)
 	if err != nil {
 		return nil, err
@@ -70,7 +80,13 @@ func (s *AnswerService) ListAnswers(query *dto.AnswerQuery) (*dto.PageResponse[d
 }
 
 // ListDeleted returns soft-deleted answers.
-func (s *AnswerService) ListDeleted(query *dto.AnswerQuery) ([]dto.AnswerView, error) {
+func (s *AnswerService) ListDeleted(query *dto.AnswerQuery, userInfo *dto.UserInfo) ([]dto.AnswerView, error) {
+	if query.ProjectID == "" {
+		return nil, errors.New("projectId is required")
+	}
+	if _, err := s.projectRepo.HasProjectAccess(query.ProjectID, userInfo); err != nil {
+		return nil, err
+	}
 	answers, err := s.repo.ListDeleted(query)
 	if err != nil {
 		return nil, err
@@ -83,9 +99,12 @@ func (s *AnswerService) ListDeleted(query *dto.AnswerQuery) ([]dto.AnswerView, e
 }
 
 // GetAnswer returns a single answer.
-func (s *AnswerService) GetAnswer(query *dto.AnswerQuery) (*dto.AnswerView, error) {
+func (s *AnswerService) GetAnswer(query *dto.AnswerQuery, userInfo *dto.UserInfo) (*dto.AnswerView, error) {
 	a, err := s.repo.GetAnswer(query.ID)
 	if err != nil {
+		return nil, err
+	}
+	if _, err := s.projectRepo.HasProjectAccess(a.ProjectID, userInfo); err != nil {
 		return nil, err
 	}
 	v := toAnswerView(*a)
@@ -94,6 +113,9 @@ func (s *AnswerService) GetAnswer(query *dto.AnswerQuery) (*dto.AnswerView, erro
 
 // CreateAnswer inserts a new answer.
 func (s *AnswerService) CreateAnswer(req *dto.AnswerRequest, userInfo *dto.UserInfo) error {
+	if _, err := s.projectRepo.HasProjectAccess(req.ProjectID, userInfo); err != nil {
+		return err
+	}
 	id, err := nanoid.New()
 	if err != nil {
 		return fmt.Errorf("generate id: %w", err)
@@ -117,6 +139,9 @@ func (s *AnswerService) UpdateAnswer(req *dto.AnswerRequest, userInfo *dto.UserI
 	if err != nil {
 		return err
 	}
+	if _, err := s.projectRepo.HasProjectAccess(a.ProjectID, userInfo); err != nil {
+		return err
+	}
 	if req.Answer != nil {
 		a.Answer = string(req.Answer)
 	}
@@ -128,12 +153,19 @@ func (s *AnswerService) UpdateAnswer(req *dto.AnswerRequest, userInfo *dto.UserI
 }
 
 // DeleteAnswer soft-deletes an answer.
-func (s *AnswerService) DeleteAnswer(req *dto.AnswerRequest) error {
+func (s *AnswerService) DeleteAnswer(req *dto.AnswerRequest, userInfo *dto.UserInfo) error {
 	ids := req.IDs
 	if len(ids) == 0 && req.ID != "" {
 		ids = []string{req.ID}
 	}
 	for _, id := range ids {
+		a, err := s.repo.GetAnswer(id)
+		if err != nil {
+			return err
+		}
+		if _, err := s.projectRepo.HasProjectAccess(a.ProjectID, userInfo); err != nil {
+			return err
+		}
 		if err := s.repo.SoftDeleteAnswer(id); err != nil {
 			return err
 		}
@@ -142,12 +174,19 @@ func (s *AnswerService) DeleteAnswer(req *dto.AnswerRequest) error {
 }
 
 // DestroyAnswer permanently deletes answers.
-func (s *AnswerService) DestroyAnswer(req *dto.AnswerRequest) error {
+func (s *AnswerService) DestroyAnswer(req *dto.AnswerRequest, userInfo *dto.UserInfo) error {
 	ids := req.IDs
 	if len(ids) == 0 && req.ID != "" {
 		ids = []string{req.ID}
 	}
 	for _, id := range ids {
+		a, err := s.repo.GetAnswer(id)
+		if err != nil {
+			return err
+		}
+		if _, err := s.projectRepo.HasProjectAccess(a.ProjectID, userInfo); err != nil {
+			return err
+		}
 		if err := s.repo.HardDeleteAnswer(id); err != nil {
 			return err
 		}
@@ -156,12 +195,19 @@ func (s *AnswerService) DestroyAnswer(req *dto.AnswerRequest) error {
 }
 
 // RestoreAnswer recovers answers from trash.
-func (s *AnswerService) RestoreAnswer(req *dto.AnswerRequest) error {
+func (s *AnswerService) RestoreAnswer(req *dto.AnswerRequest, userInfo *dto.UserInfo) error {
 	ids := req.IDs
 	if len(ids) == 0 && req.ID != "" {
 		ids = []string{req.ID}
 	}
 	for _, id := range ids {
+		a, err := s.repo.GetAnswer(id)
+		if err != nil {
+			return err
+		}
+		if _, err := s.projectRepo.HasProjectAccess(a.ProjectID, userInfo); err != nil {
+			return err
+		}
 		if err := s.repo.RestoreAnswer(id); err != nil {
 			return err
 		}
@@ -170,7 +216,10 @@ func (s *AnswerService) RestoreAnswer(req *dto.AnswerRequest) error {
 }
 
 // ExportAnswers exports answers to an Excel file with dynamic question headers.
-func (s *AnswerService) ExportAnswers(query *dto.DownloadQuery) ([]byte, string, error) {
+func (s *AnswerService) ExportAnswers(query *dto.DownloadQuery, userInfo *dto.UserInfo) ([]byte, string, error) {
+	if _, err := s.projectRepo.HasProjectAccess(query.ProjectID, userInfo); err != nil {
+		return nil, "", err
+	}
 	project, err := s.projectRepo.GetProject(query.ProjectID)
 	if err != nil {
 		return nil, "", fmt.Errorf("get project: %w", err)
@@ -341,6 +390,10 @@ func (s *AnswerService) UploadAnswers(projectID string, autoSchema bool, parentI
 	var resultProjectID string
 
 	if projectID != "" {
+		// Check project access permission
+		if _, err := s.projectRepo.HasProjectAccess(projectID, userInfo); err != nil {
+			return nil, err
+		}
 		// Use existing project - filter schema by Excel columns
 		project, err := s.projectRepo.GetProject(projectID)
 		if err != nil {

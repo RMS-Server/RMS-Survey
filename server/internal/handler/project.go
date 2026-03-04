@@ -2,7 +2,9 @@ package handler
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rms-survey/server/internal/dto"
@@ -61,6 +63,23 @@ func currentUser(c *gin.Context) *dto.UserInfo {
 	return &dto.UserInfo{}
 }
 
+// handleServiceErr maps service errors to HTTP responses.
+func handleServiceErr(c *gin.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		response.NotFound(c)
+		return true
+	}
+	if errors.Is(err, repository.ErrAccessDenied) || errors.Is(err, service.ErrAccessDenied) || strings.Contains(err.Error(), "access denied") {
+		response.Forbidden(c)
+		return true
+	}
+	response.Fail(c, response.CodeError, err.Error())
+	return true
+}
+
 func (h *ProjectHandler) ListProjects(c *gin.Context) {
 	var query dto.ProjectQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
@@ -81,9 +100,8 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 		response.Fail(c, response.CodeError, "id required")
 		return
 	}
-	result, err := h.svc.GetProject(id)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	result, err := h.svc.GetProject(id, currentUser(c))
+	if handleServiceErr(c, err) {
 		return
 	}
 	response.OK(c, result)
@@ -95,9 +113,8 @@ func (h *ProjectHandler) GetSetting(c *gin.Context) {
 		response.Fail(c, response.CodeError, "projectId required")
 		return
 	}
-	result, err := h.svc.GetSetting(projectID)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	result, err := h.svc.GetSetting(projectID, currentUser(c))
+	if handleServiceErr(c, err) {
 		return
 	}
 	response.OK(c, result)
@@ -123,8 +140,7 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.UpdateProject(&req, currentUser(c)); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleServiceErr(c, h.svc.UpdateProject(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -136,8 +152,7 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.DeleteProject(&req); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleServiceErr(c, h.svc.DeleteProject(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -145,8 +160,7 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 
 func (h *ProjectHandler) GetDeleted(c *gin.Context) {
 	result, err := h.svc.GetDeleted(currentUser(c))
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleServiceErr(c, err) {
 		return
 	}
 	response.OK(c, result)
@@ -158,8 +172,7 @@ func (h *ProjectHandler) DestroyProject(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.DestroyProject(&req); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleServiceErr(c, h.svc.DestroyProject(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -171,8 +184,7 @@ func (h *ProjectHandler) RestoreProject(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.RestoreProject(&req); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleServiceErr(c, h.svc.RestoreProject(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -184,9 +196,8 @@ func (h *ProjectHandler) ListPartners(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	result, err := h.svc.ListPartners(&query)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	result, err := h.svc.ListPartners(&query, currentUser(c))
+	if handleServiceErr(c, err) {
 		return
 	}
 	response.OK(c, result)
@@ -198,8 +209,7 @@ func (h *ProjectHandler) AddPartner(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.AddPartner(&req, currentUser(c)); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleServiceErr(c, h.svc.AddPartner(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -211,8 +221,7 @@ func (h *ProjectHandler) RemovePartner(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.RemovePartner(&req); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	if handleServiceErr(c, h.svc.RemovePartner(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)
@@ -226,9 +235,8 @@ func (h *ProjectHandler) DownloadPartner(c *gin.Context) {
 		return
 	}
 
-	partners, err := h.svc.ListPartnersAll(projectID)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
+	partners, err := h.svc.ListPartnersAll(projectID, currentUser(c))
+	if handleServiceErr(c, err) {
 		return
 	}
 

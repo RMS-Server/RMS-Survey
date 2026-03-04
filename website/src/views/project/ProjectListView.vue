@@ -61,6 +61,9 @@
               <a-button type="link" size="small" @click="handleEdit(record)">
                 编辑
               </a-button>
+              <a-button type="link" size="small" @click="handlePartners(record)">
+                参与者
+              </a-button>
               <a-button type="link" size="small" @click="handleCopyLink(record)">
                 复制链接
               </a-button>
@@ -119,7 +122,7 @@ const columns = [
   { title: '状态', key: 'status', width: 100 },
   { title: '模式', key: 'mode', width: 100 },
   { title: '创建时间', key: 'createAt', width: 180 },
-  { title: '操作', key: 'actions', width: 200 }
+  { title: '操作', key: 'actions', width: 260 }
 ]
 
 onMounted(() => {
@@ -160,6 +163,10 @@ function handleCreate() {
 
 function handleEdit(record: ProjectView) {
   router.push(`/project/${record.id}/edit`)
+}
+
+function handlePartners(record: ProjectView) {
+  router.push(`/project/${record.id}/partners`)
 }
 
 async function handleDelete(record: ProjectView) {
