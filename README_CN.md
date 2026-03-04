@@ -20,11 +20,15 @@
 - **问卷设计器** - 拖拽式问卷设计，支持多种题型
 - **模板库** - 可复用的题目模板，快速创建问卷
 - **参与者管理** - 控制问卷的访问权限
-- **答卷管理** - 查看、删除、恢复、导出答卷
+- **答卷管理** - 查看、删除、恢复、导出答卷，支持已读/未读状态追踪
 - **问卷逻辑** - 条件显示和跳题逻辑，支持 AND/OR 组合条件
 - **附件上传** - 题目支持上传附件，图片支持内联预览
+- **IP限制** - 支持按IP限制提交次数和提交间隔
+- **计时追踪** - 记录每道题的答题时长和总耗时
+- **草稿保存** - 自动保存答题进度到本地存储，页面刷新后恢复
 - **回收站** - 项目和答卷软删除，支持恢复
 - **角色权限** - 用户管理与角色控制，支持 OAuth 2.0 PKCE 单点登录
+- **玻璃态界面** - 现代玻璃效果设计，支持鼠标跟随发光效果
 
 ## 技术栈
 
@@ -65,8 +69,10 @@ rms-survey/
     └── src/
         ├── api/               # Axios API 客户端
         ├── components/        # Vue 组件
+        ├── composables/       # Vue 组合式函数（useLogicEvaluator、useTimingTracker、useDraftManager）
         ├── router/            # Vue Router
         ├── stores/            # Pinia 状态管理
+        ├── styles/            # CSS 样式（theme.css、glassmorphism.css）
         ├── types/             # TypeScript 类型定义
         └── views/             # 页面组件
 ```
@@ -258,7 +264,7 @@ npm run type-check
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `GET` | `/api/answer/list` | 答卷列表（分页） |
+| `GET` | `/api/answer/list` | 答卷列表（分页，支持跨项目查询） |
 | `GET` | `/api/answer/trash` | 已删除答卷列表 |
 | `GET` | `/api/answer` | 获取答卷详情 |
 | `POST` | `/api/answer/create` | 创建答卷 |
@@ -266,7 +272,9 @@ npm run type-check
 | `POST` | `/api/answer/delete` | 删除答卷（软删除） |
 | `POST` | `/api/answer/destroy` | 彻底删除答卷 |
 | `POST` | `/api/answer/restore` | 恢复已删除答卷 |
-| `GET` | `/api/answer/download` | 导出答卷 Excel |
+| `POST` | `/api/answer/read` | 标记答卷为已读 |
+| `POST` | `/api/answer/unread` | 标记答卷为未读 |
+| `GET` | `/api/answer/download` | 导出答卷 Excel（含IP和计时数据） |
 
 #### 模板管理
 
@@ -309,6 +317,13 @@ npm run type-check
 | `t_user_role` | 用户角色关联 |
 | `t_sys_info` | 系统设置 |
 | `t_comm_dict_item` | 字典项（问卷下拉选项） |
+
+### 答卷模型字段
+
+`t_answer` 表包含以下重要字段：
+- `is_read`、`read_at`、`read_by` — 已读状态追踪
+- `ip_address` — 提交者IP，用于限制校验
+- `timing_info` — JSON字段，存储每题计时数据
 
 ## 许可证
 

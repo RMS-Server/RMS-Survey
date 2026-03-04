@@ -20,11 +20,15 @@
 - **Survey Builder** - Drag-and-drop questionnaire designer with multiple question types
 - **Template Library** - Reusable question templates with categories and tags
 - **Participant Management** - Control who can access your surveys
-- **Response Management** - View, delete, restore, and export survey responses
+- **Response Management** - View, delete, restore, and export survey responses with read/unread status tracking
 - **Survey Logic** - Conditional question display with AND/OR logic rules
 - **Question Attachments** - Upload files attached to questions with inline preview
+- **IP-based Restrictions** - Limit submissions per IP address with configurable limits and intervals
+- **Timing Tracker** - Track time spent on each question and total survey duration
+- **Draft Persistence** - Auto-save survey progress to localStorage, restore on page reload
 - **Recycle Bin** - Soft delete with restore capability for projects and answers
 - **Role-based Access** - User management with role permissions and OAuth 2.0 PKCE SSO authentication
+- **Glassmorphism UI** - Modern glass-effect design with mouse-following glow effects
 
 ## Tech Stack
 
@@ -65,8 +69,10 @@ rms-survey/
     └── src/
         ├── api/               # Axios API clients
         ├── components/        # Vue components
+        ├── composables/       # Vue composables (useLogicEvaluator, useTimingTracker, useDraftManager)
         ├── router/            # Vue Router
         ├── stores/            # Pinia stores
+        ├── styles/            # CSS styles (theme.css, glassmorphism.css)
         ├── types/             # TypeScript interfaces
         └── views/             # Page components
 ```
@@ -258,7 +264,7 @@ Rules are stored in project settings and evaluated client-side. Hidden questions
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/answer/list` | List answers (paginated) |
+| `GET` | `/api/answer/list` | List answers (paginated, supports cross-project) |
 | `GET` | `/api/answer/trash` | List deleted answers |
 | `GET` | `/api/answer` | Get answer by ID |
 | `POST` | `/api/answer/create` | Create answer |
@@ -266,7 +272,9 @@ Rules are stored in project settings and evaluated client-side. Hidden questions
 | `POST` | `/api/answer/delete` | Delete answer (soft) |
 | `POST` | `/api/answer/destroy` | Permanently delete answer |
 | `POST` | `/api/answer/restore` | Restore deleted answer |
-| `GET` | `/api/answer/download` | Export answers to Excel |
+| `POST` | `/api/answer/read` | Mark answer as read |
+| `POST` | `/api/answer/unread` | Mark answer as unread |
+| `GET` | `/api/answer/download` | Export answers to Excel (includes IP and timing data) |
 
 #### Template Management
 
@@ -316,6 +324,13 @@ Tables use `t_` prefix. Core tables:
 | `t_user_role` | User-role associations |
 | `t_sys_info` | System settings |
 | `t_comm_dict_item` | Dictionary items for dropdowns |
+
+### Answer Model Fields
+
+The `t_answer` table includes these notable fields:
+- `is_read`, `read_at`, `read_by` — Read status tracking
+- `ip_address` — Submitter IP for restriction enforcement
+- `timing_info` — JSON field storing question-level timing data
 
 ## License
 
