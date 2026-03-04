@@ -24,14 +24,14 @@
 - **Survey Logic** - Conditional question display with AND/OR logic rules
 - **Question Attachments** - Upload files attached to questions with inline preview
 - **Recycle Bin** - Soft delete with restore capability for projects and answers
-- **Role-based Access** - User management with role permissions and RSA-encrypted passwords
+- **Role-based Access** - User management with role permissions and OAuth 2.0 PKCE SSO authentication
 
 ## Tech Stack
 
 ### Backend (server/)
 - **Go 1.24** with Gin web framework
 - **GORM** for MySQL database ORM
-- **JWT** authentication with RSA key encryption
+- **JWT** authentication with OAuth 2.0 PKCE SSO integration
 - **Viper** for configuration management
 
 ### Frontend (website/)
@@ -54,7 +54,7 @@ rms-survey/
 │   │   ├── handler/           # HTTP handlers
 │   │   ├── middleware/        # Auth, CORS, etc.
 │   │   ├── model/             # GORM models
-│   │   ├── pkg/               # Utilities (jwt, rsa, cache, etc.)
+│   │   ├── pkg/               # Utilities (jwt, cache, response, storage)
 │   │   ├── repository/        # Data access layer
 │   │   ├── router/            # Route registration
 │   │   └── service/           # Business logic
@@ -147,16 +147,32 @@ npm run type-check
 | `jwt.cookie_name` | Auth cookie name | survey_token |
 | `storage.local_path` | File upload directory | ./uploads |
 
+### OAuth 2.0 Configuration
+
+| Field | Description |
+|-------|-------------|
+| `oauth.enabled` | Enable OAuth authentication |
+| `oauth.client_id` | OAuth client ID from SSO provider |
+| `oauth.auth_url` | Authorization endpoint URL |
+| `oauth.token_url` | Token endpoint URL |
+| `oauth.userinfo_url` | User info endpoint URL |
+| `oauth.redirect_url` | Callback URL for your application |
+| `oauth.scopes` | OAuth scopes (space-separated) |
+| `oauth.min_permission_level` | Minimum permission level required |
+
 ## API Reference
 
 ### Public Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/public/rsaPublicKey` | Get RSA public key for password encryption |
 | `POST` | `/api/public/login` | User login |
 | `POST` | `/api/public/logout` | User logout |
-| `POST` | `/api/public/register` | User registration |
+| `GET` | `/api/oauth/authorize` | Get OAuth authorization config |
+| `GET` | `/api/oauth/callback` | OAuth callback (returns HTML for PKCE flow) |
+| `POST` | `/api/oauth/callback` | Complete OAuth login and get JWT |
+| `POST` | `/api/oauth/refresh` | Refresh JWT token |
+| `POST` | `/api/oauth/logout` | OAuth logout (clear session) |
 | `GET` | `/api/public/listRegisterRole` | Get available registration roles |
 | `POST` | `/api/public/loadProject` | Load survey by code |
 | `POST` | `/api/public/validateProject` | Validate survey access |
@@ -295,6 +311,7 @@ Tables use `t_` prefix. Core tables:
 | `t_user` | Users |
 | `t_role` | Roles |
 | `t_account` | Authentication accounts |
+| `t_oauth_session` | OAuth refresh tokens |
 | `t_project_partner` | Survey participants |
 | `t_user_role` | User-role associations |
 | `t_sys_info` | System settings |

@@ -24,14 +24,14 @@
 - **问卷逻辑** - 条件显示和跳题逻辑，支持 AND/OR 组合条件
 - **附件上传** - 题目支持上传附件，图片支持内联预览
 - **回收站** - 项目和答卷软删除，支持恢复
-- **角色权限** - 用户管理与角色控制，密码 RSA 加密
+- **角色权限** - 用户管理与角色控制，支持 OAuth 2.0 PKCE 单点登录
 
 ## 技术栈
 
 ### 后端 (server/)
 - **Go 1.24** + Gin Web 框架
 - **GORM** MySQL ORM
-- **JWT** 认证 + RSA 密钥加密
+- **JWT** 认证 + OAuth 2.0 PKCE 单点登录
 - **Viper** 配置管理
 
 ### 前端 (website/)
@@ -54,7 +54,7 @@ rms-survey/
 │   │   ├── handler/           # HTTP 处理器
 │   │   ├── middleware/        # 中间件（认证、跨域等）
 │   │   ├── model/             # GORM 模型
-│   │   ├── pkg/               # 工具库（jwt、rsa、cache 等）
+│   │   ├── pkg/               # 工具库（jwt、cache 等）
 │   │   ├── repository/        # 数据访问层
 │   │   ├── router/            # 路由注册
 │   │   └── service/           # 业务逻辑层
@@ -147,16 +147,32 @@ npm run type-check
 | `jwt.cookie_name` | 认证 Cookie 名称 | survey_token |
 | `storage.local_path` | 文件上传目录 | ./uploads |
 
+### OAuth 2.0 配置
+
+| 字段 | 说明 |
+|------|------|
+| `oauth.enabled` | 启用 OAuth 认证 |
+| `oauth.client_id` | SSO 提供商分配的客户端 ID |
+| `oauth.auth_url` | 授权端点 URL |
+| `oauth.token_url` | 令牌端点 URL |
+| `oauth.userinfo_url` | 用户信息端点 URL |
+| `oauth.redirect_url` | 应用回调 URL |
+| `oauth.scopes` | OAuth 权限范围（空格分隔） |
+| `oauth.min_permission_level` | 最低权限等级要求 |
+
 ## API 参考
 
 ### 公开接口
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `GET` | `/api/public/rsaPublicKey` | 获取 RSA 公钥（用于密码加密） |
 | `POST` | `/api/public/login` | 用户登录 |
 | `POST` | `/api/public/logout` | 用户登出 |
-| `POST` | `/api/public/register` | 用户注册 |
+| `GET` | `/api/oauth/authorize` | 获取 OAuth 授权配置 |
+| `GET` | `/api/oauth/callback` | OAuth 回调（返回 HTML 用于 PKCE 流程） |
+| `POST` | `/api/oauth/callback` | 完成 OAuth 登录并获取 JWT |
+| `POST` | `/api/oauth/refresh` | 刷新 JWT 令牌 |
+| `POST` | `/api/oauth/logout` | OAuth 登出（清除会话） |
 | `GET` | `/api/public/listRegisterRole` | 获取可注册角色列表 |
 | `POST` | `/api/public/loadProject` | 加载问卷 |
 | `POST` | `/api/public/validateProject` | 验证问卷访问权限 |
@@ -288,6 +304,7 @@ npm run type-check
 | `t_user` | 用户 |
 | `t_role` | 角色 |
 | `t_account` | 认证账户 |
+| `t_oauth_session` | OAuth 刷新令牌 |
 | `t_project_partner` | 问卷参与者 |
 | `t_user_role` | 用户角色关联 |
 | `t_sys_info` | 系统设置 |
