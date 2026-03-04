@@ -3,10 +3,29 @@
     <div class="page-header">
       <div class="header-top">
         <h1 class="page-title">答卷详情</h1>
-        <a-button @click="handleBack">
-          <template #icon><ArrowLeftOutlined /></template>
-          返回
-        </a-button>
+        <div class="header-actions">
+          <a-button
+            v-if="answer && !answer.isRead"
+            type="primary"
+            :loading="markingRead"
+            @click="handleMarkRead"
+          >
+            <template #icon><CheckOutlined /></template>
+            标记为已读
+          </a-button>
+          <a-button
+            v-if="answer && answer.isRead"
+            :loading="markingRead"
+            @click="handleMarkUnread"
+          >
+            <template #icon><CloseOutlined /></template>
+            标记为未读
+          </a-button>
+          <a-button @click="handleBack">
+            <template #icon><ArrowLeftOutlined /></template>
+            返回
+          </a-button>
+        </div>
       </div>
     </div>
 
@@ -28,6 +47,14 @@
           </a-descriptions-item>
           <a-descriptions-item v-if="answer.examScore" label="得分">
             {{ answer.examScore }}
+          </a-descriptions-item>
+          <a-descriptions-item label="阅读状态">
+            <a-tag :color="answer.isRead ? 'blue' : 'default'">
+              {{ answer.isRead ? '已读' : '未读' }}
+            </a-tag>
+            <span v-if="answer.isRead && answer.readAt" class="read-time">
+              ({{ formatDate(answer.readAt) }})
+            </span>
           </a-descriptions-item>
           <a-descriptions-item v-if="hasTimingInfo" label="答题时长">
             <span class="timing-badge">
@@ -83,7 +110,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { answerApi } from '@/api/answer'
 import { projectApi } from '@/api/project'
-import { ArrowLeftOutlined, PaperClipOutlined, ClockCircleOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, PaperClipOutlined, ClockCircleOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons-vue'
 import type { AnswerView } from '@/types/answer'
 import type { TimingInfo, QuestionTiming } from '@/types/answer'
 import type { SurveySchema, SurveyElement, AttachmentInfo } from '@/types/survey'
@@ -94,6 +121,7 @@ const router = useRouter()
 const answerId = computed(() => route.params.id as string)
 
 const loading = ref(false)
+const markingRead = ref(false)
 const answer = ref<AnswerView | null>(null)
 const projectName = ref('')
 const elementMap = ref<Map<string, SurveyElement>>(new Map())
@@ -152,6 +180,34 @@ function getElementTitle(elementId: string): string {
 
 function handleBack() {
   router.push('/answer')
+}
+
+async function handleMarkRead() {
+  if (!answer.value) return
+  markingRead.value = true
+  try {
+    await answerApi.markRead(answer.value.id)
+    answer.value = { ...answer.value, isRead: true }
+    message.success('已标记为已读')
+  } catch {
+    message.error('操作失败')
+  } finally {
+    markingRead.value = false
+  }
+}
+
+async function handleMarkUnread() {
+  if (!answer.value) return
+  markingRead.value = true
+  try {
+    await answerApi.markUnread(answer.value.id)
+    answer.value = { ...answer.value, isRead: false }
+    message.success('已标记为未读')
+  } catch {
+    message.error('操作失败')
+  } finally {
+    markingRead.value = false
+  }
 }
 
 function formatDate(dateStr: string) {
@@ -230,6 +286,11 @@ const hasTimingInfo = computed(() => {
   align-items: center;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .answer-content {
   background: var(--surface-glass-input);
   border-radius: var(--radius-md);
@@ -306,5 +367,11 @@ const hasTimingInfo = computed(() => {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.read-time {
+  margin-left: 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 </style>

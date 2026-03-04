@@ -32,6 +32,9 @@ type Answer struct {
 	ExamExerciseType string   `gorm:"column:exam_exercise_type;size:4" json:"examExerciseType"`
 	ExamScore        *float32 `gorm:"column:exam_score" json:"examScore"`
 	RepoID           string   `gorm:"column:repo_id;size:256" json:"repoId"`
+	IsRead           *bool    `gorm:"column:is_read;default:false" json:"isRead"`
+	ReadAt           *time.Time `gorm:"column:read_at" json:"readAt"`
+	ReadBy           string   `gorm:"column:read_by;size:256" json:"readBy"`
 }
 
 func (Answer) TableName() string { return "t_answer" }

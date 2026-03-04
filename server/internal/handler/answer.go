@@ -38,6 +38,8 @@ func (h *AnswerHandler) RegisterRoutes(answer gin.IRouter) {
 	answer.POST("/delete", h.DeleteAnswer)
 	answer.POST("/destroy", h.DestroyAnswer)
 	answer.POST("/restore", h.RestoreAnswer)
+	answer.POST("/read", h.MarkRead)
+	answer.POST("/unread", h.MarkUnread)
 	answer.GET("/download", h.Download)
 	answer.POST("/upload", h.Upload)
 }
@@ -153,6 +155,30 @@ func (h *AnswerHandler) RestoreAnswer(c *gin.Context) {
 		return
 	}
 	if handleAnswerErr(c, h.svc.RestoreAnswer(&req, currentUser(c))) {
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (h *AnswerHandler) MarkRead(c *gin.Context) {
+	var req dto.AnswerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	if handleAnswerErr(c, h.svc.MarkRead(req.ID, currentUser(c))) {
+		return
+	}
+	response.OK(c, nil)
+}
+
+func (h *AnswerHandler) MarkUnread(c *gin.Context) {
+	var req dto.AnswerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	if handleAnswerErr(c, h.svc.MarkUnread(req.ID, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)

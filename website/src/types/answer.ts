@@ -26,6 +26,9 @@ export interface AnswerView {
   createBy: string
   createAt: string
   updateAt: string
+  isRead: boolean
+  readAt?: string
+  readBy?: string
 }
 
 export interface DownloadQuery {

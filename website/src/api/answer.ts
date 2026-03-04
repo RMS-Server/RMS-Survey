@@ -85,5 +85,15 @@ export const answerApi = {
     return request.post('/answer/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
+  },
+
+  // Mark answer as read
+  markRead(id: string): Promise<void> {
+    return request.post('/answer/read', { id })
+  },
+
+  // Mark answer as unread
+  markUnread(id: string): Promise<void> {
+    return request.post('/answer/unread', { id })
   }
 }

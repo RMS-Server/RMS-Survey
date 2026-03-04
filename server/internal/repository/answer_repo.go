@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/rms-survey/server/internal/dto"
 	"github.com/rms-survey/server/internal/model"
 	"gorm.io/gorm"
@@ -113,4 +115,25 @@ func (r *AnswerRepo) CreateAnswers(answers []model.Answer) error {
 		return nil
 	}
 	return r.db.Create(&answers).Error
+}
+
+// MarkRead marks an answer as read.
+func (r *AnswerRepo) MarkRead(id string, userID string) error {
+	now := time.Now()
+	trueVal := true
+	return r.db.Model(&model.Answer{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"is_read": &trueVal,
+		"read_at": &now,
+		"read_by": userID,
+	}).Error
+}
+
+// MarkUnread marks an answer as unread.
+func (r *AnswerRepo) MarkUnread(id string) error {
+	falseVal := false
+	return r.db.Model(&model.Answer{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"is_read": &falseVal,
+		"read_at": nil,
+		"read_by": "",
+	}).Error
 }

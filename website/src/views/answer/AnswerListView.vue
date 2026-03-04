@@ -45,13 +45,21 @@
         row-key="id"
         @change="handleTableChange"
       >
-        <template #bodyCell="{ column, record }">
+        <template #bodyCell="{ column, record, index }">
+          <template v-if="column.key === 'rowNum'">
+            {{ pagination.total - (pagination.current - 1) * pagination.pageSize - index }}
+          </template>
           <template v-if="column.key === 'createAt'">
             {{ formatDate(record.createAt) }}
           </template>
           <template v-if="column.key === 'tempSave'">
             <a-tag :color="record.tempSave ? 'orange' : 'green'">
               {{ record.tempSave ? '草稿' : '已提交' }}
+            </a-tag>
+          </template>
+          <template v-if="column.key === 'isRead'">
+            <a-tag :color="record.isRead ? 'blue' : 'default'">
+              {{ record.isRead ? '已读' : '未读' }}
             </a-tag>
           </template>
           <template v-if="column.key === 'actions'">
@@ -112,8 +120,10 @@ const pagination = reactive({
 })
 
 const columns = [
+  { title: '序号', key: 'rowNum', width: 70 },
   { title: 'ID', dataIndex: 'id', width: 200, ellipsis: true },
   { title: '状态', key: 'tempSave', width: 100 },
+  { title: '已读', key: 'isRead', width: 80 },
   { title: '提交时间', key: 'createAt', width: 180 },
   { title: '操作', key: 'actions', width: 150 }
 ]

@@ -258,6 +258,30 @@ func (s *AnswerService) RestoreAnswer(req *dto.AnswerRequest, userInfo *dto.User
 	return nil
 }
 
+// MarkRead marks an answer as read.
+func (s *AnswerService) MarkRead(id string, userInfo *dto.UserInfo) error {
+	a, err := s.repo.GetAnswer(id)
+	if err != nil {
+		return err
+	}
+	if _, err := s.projectRepo.HasProjectAccess(a.ProjectID, userInfo); err != nil {
+		return err
+	}
+	return s.repo.MarkRead(id, userInfo.UserID)
+}
+
+// MarkUnread marks an answer as unread.
+func (s *AnswerService) MarkUnread(id string, userInfo *dto.UserInfo) error {
+	a, err := s.repo.GetAnswer(id)
+	if err != nil {
+		return err
+	}
+	if _, err := s.projectRepo.HasProjectAccess(a.ProjectID, userInfo); err != nil {
+		return err
+	}
+	return s.repo.MarkUnread(id)
+}
+
 // ExportAnswers exports answers to an Excel file with dynamic question headers.
 func (s *AnswerService) ExportAnswers(query *dto.DownloadQuery, userInfo *dto.UserInfo) ([]byte, string, error) {
 	if _, err := s.projectRepo.HasProjectAccess(query.ProjectID, userInfo); err != nil {
@@ -381,6 +405,11 @@ func toAnswerView(a model.Answer) dto.AnswerView {
 	if a.MetaInfo != "" {
 		metaJSON = json.RawMessage(a.MetaInfo)
 	}
+	isRead := a.IsRead != nil && *a.IsRead
+	var readAt string
+	if a.ReadAt != nil {
+		readAt = a.ReadAt.Format(time.RFC3339)
+	}
 	return dto.AnswerView{
 		ID:        a.ID,
 		ProjectID: a.ProjectID,
@@ -391,6 +420,9 @@ func toAnswerView(a model.Answer) dto.AnswerView {
 		CreateBy:  a.CreateBy,
 		CreatedAt: a.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: a.UpdatedAt.Format(time.RFC3339),
+		IsRead:    isRead,
+		ReadAt:    readAt,
+		ReadBy:    a.ReadBy,
 	}
 }
 

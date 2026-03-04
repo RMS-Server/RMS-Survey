@@ -20,6 +20,8 @@ type AnswerRequest struct {
 	TempSave  *int            `json:"tempSave"`
 	// IDs for batch operations
 	IDs []string `json:"ids"`
+	// IsRead for marking answer as read/unread
+	IsRead *bool `json:"isRead"`
 }
 
 // AnswerView is the response DTO for an answer.
@@ -33,6 +35,9 @@ type AnswerView struct {
 	CreateBy  string          `json:"createBy"`
 	CreatedAt string          `json:"createAt"`
 	UpdatedAt string          `json:"updateAt"`
+	IsRead    bool            `json:"isRead"`
+	ReadAt    string          `json:"readAt,omitempty"`
+	ReadBy    string          `json:"readBy,omitempty"`
 }
 
 // DownloadQuery holds parameters for answer export.
