@@ -113,6 +113,7 @@ const emit = defineEmits<{
   (e: 'submit', answers: Record<string, AnswerValue>): void
   (e: 'tempSave', answers: Record<string, AnswerValue>): void
   (e: 'update:answers', answers: Record<string, unknown>): void
+  (e: 'answerChange', questionId: string): void
 }>()
 
 // Internal answers with attachment support - this is the source of truth for answers
@@ -159,6 +160,7 @@ function updateAnswer(questionId: string, value: string | string[] | number | nu
     internalAnswers.value[questionId].value = value
   }
   answerVersion.value++  // Trigger logic re-evaluation
+  emit('answerChange', questionId)
   emitUpdate()
 }
 

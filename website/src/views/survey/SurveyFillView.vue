@@ -16,6 +16,7 @@
           :answers="answers"
           :project-id="surveyId"
           @update:answers="answers = $event"
+          @answer-change="handleAnswerChange"
           @submit="handleSubmit"
           @temp-save="handleTempSave"
         />
@@ -31,6 +32,8 @@ import { message } from 'ant-design-vue'
 import { surveyApi } from '@/api/survey'
 import SurveyRenderer from '@/components/survey/SurveyRenderer.vue'
 import { useLogicEvaluator } from '@/composables/useLogicEvaluator'
+import { useTimingTracker } from '@/composables/useTimingTracker'
+import { useDraftManager } from '@/composables/useDraftManager'
 import type { SurveySchema, SurveyElement, AnswerValue } from '@/types/survey'
 
 const route = useRoute()
@@ -52,6 +55,12 @@ const surveySchema = computed(() => {
 const surveySchemaComputed = computed(() => surveySchema.value)
 const answersComputed = computed(() => answers.value)
 const { isQuestionVisible } = useLogicEvaluator(surveySchemaComputed, answersComputed)
+
+// Timing tracker
+const { initTiming, recordAnswer, getTimingInfo } = useTimingTracker()
+
+// Draft manager
+const { saveDraft, loadDraft, clearDraft } = useDraftManager()
 
 onMounted(() => {
   loadSurvey()
@@ -78,12 +87,37 @@ async function loadSurvey() {
         })
       }
     }
+
+    // Check for existing draft
+    if (surveyId.value) {
+      const draft = loadDraft(surveyId.value)
+      if (draft) {
+        // Merge draft answers with initialized answers (draft takes precedence)
+        for (const [key, value] of Object.entries(draft.answers)) {
+          if (key in answers.value) {
+            answers.value[key] = value
+          }
+        }
+        // Restore timing from draft
+        initTiming(draft.timing)
+      } else {
+        // Fresh start
+        initTiming()
+      }
+    } else {
+      initTiming()
+    }
   } catch (e: unknown) {
     const err = e as { message?: string }
     error.value = err.message || '加载问卷失败'
   } finally {
     loading.value = false
   }
+}
+
+// Handle answer change event from SurveyRenderer
+function handleAnswerChange(questionId: string) {
+  recordAnswer(questionId)
 }
 
 async function handleSubmit(submittedAnswers: Record<string, AnswerValue>) {
@@ -111,10 +145,14 @@ async function handleSubmit(submittedAnswers: Record<string, AnswerValue>) {
   }
 
   try {
+    const timing = getTimingInfo()
     await surveyApi.saveAnswer({
       projectId: surveyId.value,
-      answer: submittedAnswers
+      answer: submittedAnswers,
+      metaInfo: { timing }
     })
+    // Clear draft after successful submission
+    clearDraft(surveyId.value)
     message.success('提交成功')
   } catch {
     message.error('提交失败，请重试')
@@ -123,6 +161,10 @@ async function handleSubmit(submittedAnswers: Record<string, AnswerValue>) {
 
 async function handleTempSave(submittedAnswers: Record<string, AnswerValue>) {
   try {
+    const timing = getTimingInfo()
+    // Save to localStorage
+    saveDraft(surveyId.value, submittedAnswers, timing)
+    // Also save to backend
     await surveyApi.tempSaveAnswer({
       projectId: surveyId.value,
       answer: submittedAnswers,

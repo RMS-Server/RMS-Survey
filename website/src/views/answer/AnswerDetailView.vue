@@ -29,6 +29,12 @@
           <a-descriptions-item v-if="answer.examScore" label="得分">
             {{ answer.examScore }}
           </a-descriptions-item>
+          <a-descriptions-item v-if="hasTimingInfo" label="答题时长">
+            <span class="timing-badge">
+              <ClockCircleOutlined />
+              {{ formatDuration(timingInfo!.totalDuration) }}
+            </span>
+          </a-descriptions-item>
         </a-descriptions>
 
         <a-divider />
@@ -59,6 +65,10 @@
                   </a>
                 </div>
               </div>
+              <div v-if="getQuestionTiming(key as string)?.duration" class="question-timing">
+                <ClockCircleOutlined />
+                耗时: {{ formatDuration(getQuestionTiming(key as string)!.duration) }}
+              </div>
             </div>
           </div>
         </div>
@@ -73,8 +83,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { answerApi } from '@/api/answer'
 import { projectApi } from '@/api/project'
-import { ArrowLeftOutlined, PaperClipOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, PaperClipOutlined, ClockCircleOutlined } from '@ant-design/icons-vue'
 import type { AnswerView } from '@/types/answer'
+import type { TimingInfo, QuestionTiming } from '@/types/answer'
 import type { SurveySchema, SurveyElement, AttachmentInfo } from '@/types/survey'
 
 const route = useRoute()
@@ -86,6 +97,7 @@ const loading = ref(false)
 const answer = ref<AnswerView | null>(null)
 const projectName = ref('')
 const elementMap = ref<Map<string, SurveyElement>>(new Map())
+const timingInfo = ref<TimingInfo | null>(null)
 
 interface AnswerValueWithAttachments {
   value: unknown
@@ -109,6 +121,11 @@ async function fetchAnswer() {
       const project = await projectApi.get(answer.value.projectId)
       projectName.value = project.name
       buildElementMap(project.survey as SurveySchema)
+    }
+    // Extract timing info from metaInfo
+    if (answer.value?.metaInfo && typeof answer.value.metaInfo === 'object') {
+      const meta = answer.value.metaInfo as { timing?: TimingInfo }
+      timingInfo.value = meta.timing || null
     }
   } catch {
     message.error('加载答卷失败')
@@ -173,6 +190,26 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
+
+// Format duration in ms to human readable
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+  const minutes = Math.floor(ms / 60000)
+  const seconds = Math.round((ms % 60000) / 1000)
+  return `${minutes}m ${seconds}s`
+}
+
+// Get timing for a specific question
+function getQuestionTiming(questionId: string): QuestionTiming | undefined {
+  if (!timingInfo.value?.questionTimings) return undefined
+  return timingInfo.value.questionTimings.find(t => t.questionId === questionId)
+}
+
+// Check if timing info is available
+const hasTimingInfo = computed(() => {
+  return timingInfo.value && timingInfo.value.totalDuration > 0
+})
 </script>
 
 <style scoped>
@@ -253,5 +290,21 @@ function formatFileSize(bytes: number): string {
 
 .attachment-link:hover {
   text-decoration: underline;
+}
+
+.timing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-primary);
+}
+
+.question-timing {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>

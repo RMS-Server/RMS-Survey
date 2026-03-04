@@ -48,3 +48,27 @@ export interface AnswerCreateRequest {
   answer: object
   metaInfo?: object
 }
+
+// Timing info for a single question
+export interface QuestionTiming {
+  questionId: string      // Question ID
+  startTime: number       // Timestamp when starting this question (ms)
+  firstAnswerTime: number // Timestamp of first answer (ms)
+  duration: number        // Time spent on this question (ms)
+}
+
+// Timing info for entire survey
+export interface TimingInfo {
+  surveyStartTime: number        // Survey start timestamp (ms)
+  submitTime: number             // Submit timestamp (ms)
+  totalDuration: number          // Total time spent (ms)
+  questionTimings: QuestionTiming[]
+}
+
+// Draft data stored in localStorage
+export interface DraftData {
+  projectId: string
+  answers: Record<string, unknown>
+  timing: TimingInfo
+  savedAt: number  // Draft save timestamp
+}
