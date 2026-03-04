@@ -264,9 +264,10 @@ function handleSave(rule: LogicRule) {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #fafafa;
-  border-radius: 4px;
-  border: 1px solid #f0f0f0;
+  background: var(--surface-glass-input);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-inset);
 }
 
 .rule-content {

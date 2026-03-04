@@ -122,14 +122,15 @@ function removeFile(index: number) {
   align-items: center;
   gap: 8px;
   padding: 8px;
-  background: #fafafa;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
+  background: var(--surface-glass-input);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-inset);
 }
 
 .attachment-thumb {
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .attachment-file-icon {
@@ -138,10 +139,10 @@ function removeFile(index: number) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f5f5;
-  border-radius: 4px;
+  background: var(--surface-glass);
+  border-radius: var(--radius-sm);
   font-size: 32px;
-  color: #999;
+  color: var(--color-text-muted);
 }
 
 .attachment-info {
@@ -156,11 +157,12 @@ function removeFile(index: number) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
+  color: var(--color-text-main);
 }
 
 .upload-tip {
   margin-top: 4px;
   font-size: 12px;
-  color: #999;
+  color: var(--color-text-muted);
 }
 </style>

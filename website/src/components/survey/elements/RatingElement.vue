@@ -43,6 +43,6 @@ function handleChange() {
 
 .rating-value {
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-muted);
 }
 </style>

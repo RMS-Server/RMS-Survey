@@ -1,19 +1,23 @@
 <template>
-  <div class="login-container">
-    <a-card class="login-card" title="登录">
-      <div class="login-content">
-        <p class="login-hint">通过 SSO 账号登录问卷系统</p>
-        <a-button
-          type="primary"
-          size="large"
-          block
-          :loading="loading"
-          @click="handleOAuthLogin"
-        >
-          通过 SSO 登录
-        </a-button>
+  <div class="page-shell">
+    <div class="page-surface">
+      <div class="page-surface__inner">
+        <div class="page-content">
+          <h1 class="glass-title">RMS Survey</h1>
+          <p class="login-hint">通过 SSO 账号登录问卷系统</p>
+          <a-button
+            type="primary"
+            size="large"
+            block
+            class="login-btn glow-effect"
+            :loading="loading"
+            @click="handleOAuthLogin"
+          >
+            通过 SSO 登录
+          </a-button>
+        </div>
       </div>
-    </a-card>
+    </div>
   </div>
 </template>
 
@@ -38,26 +42,17 @@ async function handleOAuthLogin() {
 </script>
 
 <style scoped>
-.login-container {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.login-card {
-  width: 400px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.login-content {
-  padding: 24px 0;
-}
-
 .login-hint {
   text-align: center;
-  color: #666;
-  margin-bottom: 24px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-xl);
+  font-size: 1rem;
+}
+
+.login-btn {
+  height: 48px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
 }
 </style>

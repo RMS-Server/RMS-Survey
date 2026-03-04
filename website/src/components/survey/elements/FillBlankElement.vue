@@ -53,7 +53,7 @@ const { element } = props
 .char-count {
   text-align: right;
   font-size: 12px;
-  color: #999;
+  color: var(--color-text-muted);
   margin-top: 4px;
 }
 </style>

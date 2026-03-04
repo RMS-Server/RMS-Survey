@@ -1,6 +1,15 @@
 <template>
-  <div class="oauth-callback-container">
-    <a-spin size="large" tip="正在登录..." />
+  <div class="page-shell">
+    <div class="page-surface">
+      <div class="page-surface__inner">
+        <div class="page-content">
+          <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">正在登录...</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -40,11 +49,15 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.oauth-callback-container {
-  min-height: 100vh;
+.loading-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  gap: var(--spacing-lg);
+}
+
+.loading-text {
+  color: var(--color-text-muted);
+  font-size: 1rem;
 }
 </style>

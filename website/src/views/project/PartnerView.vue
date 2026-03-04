@@ -52,10 +52,18 @@ onMounted(async () => {
 <style scoped>
 .partner-page {
   padding: 16px;
+  min-height: calc(100vh - 64px);
 }
 
 .page-header {
   margin-bottom: 16px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  padding: 16px 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-raised);
 }
 
 .header-left {
@@ -66,5 +74,6 @@ onMounted(async () => {
 
 .header-left h2 {
   margin: 0;
+  color: var(--color-text-main);
 }
 </style>

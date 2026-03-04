@@ -5,35 +5,62 @@
   box-sizing: border-box;
 }
 
-html, body {
+html {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-    'Noto Color Emoji';
+  background: url('/img/bg.webp') center/cover no-repeat fixed;
+}
+
+body {
+  height: 100%;
+  min-height: 100vh;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  color: var(--color-text-main);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+}
+
+/* Global glass overlay for better readability */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--glass-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 0;
+  pointer-events: none;
 }
 
 #app {
   height: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 /* Layout */
 .page-container {
   padding: 24px;
-  background: #f0f2f5;
+  background: transparent;
   min-height: calc(100vh - 64px);
 }
 
 .page-header {
-  background: #fff;
+  background: var(--surface-glass);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
   padding: 16px 24px;
   margin-bottom: 16px;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-raised);
 }
 
 .page-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f1f1f;
+  color: var(--color-text-main);
 }
 
 /* Survey Editor */
@@ -44,46 +71,56 @@ html, body {
 
 .editor-toolbar {
   width: 240px;
-  background: #fff;
-  border-right: 1px solid #e8e8e8;
+  background: var(--surface-glass);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border-right: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-inset);
   padding: 16px;
   overflow-y: auto;
 }
 
 .editor-canvas {
   flex: 1;
-  background: #f5f5f5;
+  background: transparent;
   padding: 24px;
   overflow-y: auto;
 }
 
 .editor-settings {
   width: 320px;
-  background: #fff;
-  border-left: 1px solid #e8e8e8;
+  background: var(--surface-glass);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border-left: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-inset);
   padding: 16px;
   overflow-y: auto;
 }
 
 /* Survey Element */
 .survey-element {
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
   padding: 16px;
   margin-bottom: 12px;
   cursor: move;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-raised);
 }
 
 .survey-element:hover {
-  border-color: #1890ff;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-floating);
+  transform: translateY(-2px);
 }
 
 .survey-element.selected {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(252, 121, 97, 0.3), var(--shadow-floating);
 }
 
 .element-title {
@@ -107,11 +144,14 @@ html, body {
 }
 
 .question-item {
-  background: #fff;
-  border-radius: 8px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
   padding: 24px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-raised);
 }
 
 .question-title {
@@ -125,10 +165,515 @@ html, body {
 }
 
 /* Ant Design overrides */
-.ant-layout-sider {
-  background: #001529;
+.ant-layout {
+  background: transparent !important;
+}
+
+.ant-layout-sider,
+.ant-layout-sider-light {
+  background: var(--surface-glass) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-right: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-inset);
+}
+
+.ant-menu-dark {
+  background: transparent !important;
+}
+
+.ant-menu-dark .ant-menu-item {
+  color: var(--color-text-main) !important;
+}
+
+.ant-menu-dark .ant-menu-item:hover {
+  background: rgba(252, 121, 97, 0.1) !important;
+  color: var(--color-primary) !important;
 }
 
 .ant-menu-dark .ant-menu-item-selected {
-  background-color: #1890ff !important;
+  background: rgba(252, 121, 97, 0.15) !important;
+  color: var(--color-primary) !important;
+}
+
+.ant-menu-dark .ant-menu-submenu-title {
+  color: var(--color-text-main) !important;
+}
+
+.ant-menu-dark .ant-menu-submenu-title:hover {
+  color: var(--color-primary) !important;
+}
+
+.ant-menu-dark .ant-menu-sub {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+.ant-menu-dark .ant-menu-item-selected {
+  background: rgba(252, 121, 97, 0.15) !important;
+  color: var(--color-primary) !important;
+}
+
+.ant-layout-header {
+  background: var(--surface-glass-strong) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-inset);
+}
+
+/* Primary button override */
+.ant-btn-primary {
+  background: linear-gradient(135deg, rgb(252, 121, 97), rgb(235, 92, 80)) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(252, 121, 97, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, rgb(235, 92, 80), rgb(214, 86, 69)) !important;
+  box-shadow: 0 8px 24px rgba(252, 121, 97, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.4) !important;
+  transform: translateY(-2px);
+}
+
+/* Default button glass effect */
+.ant-btn-default {
+  background: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-glass) !important;
+  color: var(--color-text-main) !important;
+  box-shadow: var(--shadow-inset);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ant-btn-default:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+  box-shadow: var(--shadow-raised);
+  transform: translateY(-1px);
+}
+
+.ant-btn-default:active {
+  background: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Dashed button glass effect */
+.ant-btn-dashed {
+  background: rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px dashed var(--border-glass) !important;
+  color: var(--color-text-main) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ant-btn-dashed:hover {
+  background: rgba(255, 255, 255, 0.4) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+}
+
+/* Text button glass effect */
+.ant-btn-text {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--color-text-main) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ant-btn-text:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+  color: var(--color-primary) !important;
+}
+
+/* Link button */
+.ant-btn-link {
+  color: var(--color-primary) !important;
+  transition: all 0.2s ease;
+}
+
+.ant-btn-link:hover {
+  color: var(--color-primary-hover) !important;
+}
+
+/* Danger button variants */
+.ant-btn-dangerous.ant-btn-default {
+  background: rgba(255, 71, 87, 0.15) !important;
+  border-color: rgba(255, 71, 87, 0.4) !important;
+  color: #ff4757 !important;
+}
+
+.ant-btn-dangerous.ant-btn-default:hover {
+  background: rgba(255, 71, 87, 0.25) !important;
+  border-color: #ff4757 !important;
+}
+
+.ant-btn-dangerous.ant-btn-primary {
+  background: linear-gradient(135deg, rgb(255, 71, 87), rgb(214, 48, 56)) !important;
+  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+}
+
+.ant-btn-dangerous.ant-btn-primary:hover {
+  background: linear-gradient(135deg, rgb(214, 48, 56), rgb(194, 38, 46)) !important;
+  box-shadow: 0 8px 24px rgba(255, 71, 87, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Disabled button states */
+.ant-btn-disabled,
+.ant-btn[disabled] {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: rgba(0, 0, 0, 0.25) !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Button group fixes */
+.ant-btn-group .ant-btn {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Card glass effect */
+.ant-card {
+  background: var(--surface-glass) !important;
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border: 1px solid var(--border-glass) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-raised);
+}
+
+.ant-card-head {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Table glass effect */
+.ant-table {
+  background: transparent !important;
+}
+
+.ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-glass) !important;
+  box-shadow: var(--shadow-inset);
+}
+
+.ant-table-tbody > tr > td {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: rgba(252, 121, 97, 0.08) !important;
+}
+
+/* Input glass effect */
+.ant-input,
+.ant-select-selector,
+.ant-picker {
+  background: var(--surface-glass-input) !important;
+  border: 1px solid var(--border-glass) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-inset);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ant-input:focus,
+.ant-input-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  background: var(--surface-glass-input-focus) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: var(--shadow-floating), 0 0 0 2px rgba(252, 121, 97, 0.2) !important;
+}
+
+/* Search input button glass effect */
+.ant-input-search .ant-input-group-addon .ant-btn {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-glass) !important;
+  box-shadow: var(--shadow-inset);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ant-input-search .ant-input-group-addon .ant-btn:hover {
+  background: rgba(255, 255, 255, 0.4) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+}
+
+.ant-input-search .ant-input {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm) !important;
+}
+
+/* Modal glass effect */
+.ant-modal-content {
+  background: var(--surface-glass-strong) !important;
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-deep);
+}
+
+.ant-modal-header {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.ant-modal-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Dropdown glass effect */
+.ant-dropdown-menu {
+  background: var(--surface-glass-strong) !important;
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-floating);
+}
+
+.ant-dropdown-menu-item:hover {
+  background: rgba(252, 121, 97, 0.1) !important;
+}
+
+/* Tag color override */
+.ant-tag-green {
+  background: rgba(46, 213, 115, 0.2) !important;
+  border-color: rgba(46, 213, 115, 0.4) !important;
+  color: #20bf6b !important;
+}
+
+/* Checkbox glass effect */
+.ant-checkbox-wrapper {
+  color: var(--color-text-main);
+}
+
+/* Popconfirm glass effect */
+.ant-popover-inner {
+  background: var(--surface-glass-strong) !important;
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-floating);
+}
+
+/* Sider trigger glass effect */
+.ant-layout-sider-trigger {
+  background: var(--surface-glass) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-top: 1px solid var(--border-glass) !important;
+  color: var(--color-text-main) !important;
+}
+
+.ant-layout-sider-trigger:hover {
+  background: var(--surface-glass-strong) !important;
+  color: var(--color-primary) !important;
+}
+
+/* Force override Ant Design's inline/dynamic styles for sider */
+.ant-layout-sider-light .ant-layout-sider-trigger {
+  background: var(--surface-glass) !important;
+  color: var(--color-text-main) !important;
+}
+
+.ant-layout-sider-light .ant-layout-sider-trigger:hover {
+  background: var(--surface-glass-strong) !important;
+  color: var(--color-primary) !important;
+}
+
+/* Tabs glass effect */
+.ant-tabs-tab {
+  color: var(--color-text-muted) !important;
+}
+
+.ant-tabs-tab:hover {
+  color: var(--color-primary) !important;
+}
+
+.ant-tabs-tab-active {
+  color: var(--color-primary) !important;
+}
+
+.ant-tabs-ink-bar {
+  background: var(--color-primary) !important;
+}
+
+.ant-tabs-nav::before {
+  border-bottom: 1px solid var(--border-glass) !important;
+}
+
+/* Descriptions glass effect */
+.ant-descriptions-bordered .ant-descriptions-item-label {
+  background: rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.ant-descriptions-item-label {
+  color: var(--color-text-muted);
+}
+
+.ant-descriptions-item-content {
+  color: var(--color-text-main);
+}
+
+.ant-descriptions-bordered .ant-descriptions-row {
+  border-bottom: 1px solid var(--border-glass) !important;
+}
+
+.ant-descriptions-bordered .ant-descriptions-item-label,
+.ant-descriptions-bordered .ant-descriptions-item-content {
+  border-right: 1px solid var(--border-glass) !important;
+}
+
+/* Divider glass effect */
+.ant-divider {
+  border-color: var(--border-glass) !important;
+}
+
+.ant-divider-inner-text {
+  color: var(--color-text-muted);
+}
+
+/* Spin glass effect */
+.ant-spin-dot-item {
+  background-color: var(--color-primary) !important;
+}
+
+/* Alert glass effect */
+.ant-alert {
+  background: var(--surface-glass) !important;
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border: 1px solid var(--border-glass) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.ant-alert-info {
+  border-color: rgba(24, 144, 255, 0.4) !important;
+}
+
+.ant-alert-success {
+  border-color: rgba(46, 213, 115, 0.4) !important;
+}
+
+.ant-alert-warning {
+  border-color: rgba(255, 165, 2, 0.4) !important;
+}
+
+.ant-alert-error {
+  border-color: rgba(255, 71, 87, 0.4) !important;
+}
+
+/* Form glass effect */
+.ant-form-item-label > label {
+  color: var(--color-text-main);
+}
+
+/* Switch glass effect */
+.ant-switch {
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+.ant-switch-checked {
+  background: var(--color-gradient-primary) !important;
+  box-shadow: 0 2px 8px rgba(252, 121, 97, 0.3);
+}
+
+/* Radio glass effect */
+.ant-radio-button-wrapper {
+  background: var(--surface-glass-input) !important;
+  border: 1px solid var(--border-glass) !important;
+  color: var(--color-text-main) !important;
+}
+
+.ant-radio-button-wrapper:hover {
+  color: var(--color-primary) !important;
+}
+
+.ant-radio-button-wrapper-checked {
+  background: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+/* Upload glass effect */
+.ant-upload-drag {
+  background: var(--surface-glass-input) !important;
+  border: 1px dashed var(--border-glass) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.ant-upload-drag:hover {
+  border-color: var(--color-primary) !important;
+}
+
+.ant-upload-drag-icon {
+  color: var(--color-primary) !important;
+}
+
+.ant-upload-text {
+  color: var(--color-text-main) !important;
+}
+
+.ant-upload-hint {
+  color: var(--color-text-muted) !important;
+}
+
+/* Result component */
+.ant-result-title {
+  color: var(--color-text-main) !important;
+}
+
+.ant-result-subtitle {
+  color: var(--color-text-muted) !important;
+}
+
+/* Badge glass effect */
+.ant-badge-count {
+  background: var(--color-primary) !important;
+  box-shadow: 0 2px 8px rgba(252, 121, 97, 0.4);
+}
+
+/* Input number glass effect */
+.ant-input-number {
+  background: var(--surface-glass-input) !important;
+  border: 1px solid var(--border-glass) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-inset);
+}
+
+.ant-input-number:hover {
+  border-color: var(--color-primary) !important;
+}
+
+.ant-input-number-focused {
+  background: var(--surface-glass-input-focus) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: var(--shadow-floating), 0 0 0 2px rgba(252, 121, 97, 0.2) !important;
+}
+
+/* Textarea glass effect */
+.ant-input-textarea textarea {
+  background: var(--surface-glass-input) !important;
+  border: 1px solid var(--border-glass) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-inset);
+}
+
+.ant-input-textarea textarea:focus {
+  background: var(--surface-glass-input-focus) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: var(--shadow-floating), 0 0 0 2px rgba(252, 121, 97, 0.2) !important;
 }

@@ -141,7 +141,7 @@ async function handleTempSave(submittedAnswers: Record<string, AnswerValue>) {
   margin: 0 auto;
   padding: 40px 20px;
   min-height: 100vh;
-  background: #f5f5f5;
+  background: transparent;
 }
 
 .survey-title {
@@ -149,7 +149,7 @@ async function handleTempSave(submittedAnswers: Record<string, AnswerValue>) {
   font-size: 24px;
   font-weight: 600;
   margin-bottom: 32px;
-  color: #1f1f1f;
+  color: var(--color-text-main);
 }
 
 .error-state {

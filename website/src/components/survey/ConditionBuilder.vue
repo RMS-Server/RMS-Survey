@@ -391,9 +391,10 @@ function handleOk() {
 
 .condition-item {
   padding: 12px;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
-  background: #fafafa;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  background: var(--surface-glass-input);
+  box-shadow: var(--shadow-inset);
 }
 
 .condition-row {
@@ -410,6 +411,7 @@ function handleOk() {
 .condition-row label {
   width: 40px;
   flex-shrink: 0;
+  color: var(--color-text-main);
 }
 
 .target-questions {

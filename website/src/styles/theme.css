@@ -1,0 +1,76 @@
+:root {
+  /* Design Tokens */
+
+  /* Palette */
+  --color-primary: rgb(252, 121, 97);
+  --color-primary-hover: rgb(214, 86, 69);
+  --color-gradient-primary: linear-gradient(135deg, rgb(252, 121, 97), rgb(235, 92, 80));
+
+  --color-text-main: #1a1a1a;
+  --color-text-muted: #666666;
+  --color-text-light: #ffffff;
+
+  /* Surface (Glassmorphism) */
+  --surface-glass: rgba(255, 255, 255, 0.45);
+  --surface-glass-strong: rgba(255, 255, 255, 0.6);
+  --surface-glass-input: rgba(255, 255, 255, 0.35);
+  --surface-glass-input-focus: rgba(255, 255, 255, 0.55);
+  --blur-strength: 60px;
+
+  /* Global overlay for background dimming */
+  --glass-overlay: rgba(255, 255, 255, 0.35);
+
+  /* Border for glass components */
+  --border-glass: rgba(255, 255, 255, 0.5);
+
+  /* 3D Shadow effects */
+  --shadow-inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 0 rgba(0, 0, 0, 0.05);
+  --shadow-raised: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04), inset 0 1px 0 0 rgba(255, 255, 255, 0.5);
+  --shadow-floating: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+  --shadow-deep: 0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 20px rgba(0, 0, 0, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
+
+  /* Status Colors */
+  --color-success: #2ed573;
+  --color-error: #ff4757;
+  --color-warning: #ffa502;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 8px 20px rgba(252, 121, 97, 0.25);
+
+  /* Transitions */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* Ant Design Layout Overrides */
+  --ant-layout-color-bg-header: transparent;
+  --ant-layout-color-bg-trigger: transparent;
+  --ant-layout-sider-bg: transparent;
+  --ant-layout-trigger-bg: transparent;
+  --ant-layout-light-sider-bg: transparent;
+  --ant-layout-light-trigger-bg: transparent;
+}
+
+/* Dark Mode Support (Prepared for future) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Can be populated later if dark mode is requested */
+  }
+}

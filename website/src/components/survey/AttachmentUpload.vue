@@ -128,6 +128,6 @@ watch(() => props.modelValue, (val) => {
 .upload-tip {
   margin-top: 8px;
   font-size: 12px;
-  color: #999;
+  color: var(--color-text-muted);
 }
 </style>

@@ -177,7 +177,14 @@ function formatFileSize(bytes: number): string {
 
 <style scoped>
 .page-header {
+  background: var(--surface-glass);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  padding: 16px 24px;
   margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-raised);
 }
 
 .header-top {
@@ -187,15 +194,16 @@ function formatFileSize(bytes: number): string {
 }
 
 .answer-content {
-  background: #fafafa;
-  border-radius: 4px;
+  background: var(--surface-glass-input);
+  border-radius: var(--radius-md);
   padding: 16px;
+  border: 1px solid var(--border-glass);
 }
 
 .answer-item {
   display: flex;
-  padding: 8px 0;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-glass);
 }
 
 .answer-item:last-child {
@@ -205,23 +213,25 @@ function formatFileSize(bytes: number): string {
 .answer-label {
   width: 200px;
   font-weight: 500;
-  color: #666;
+  color: var(--color-text-muted);
 }
 
 .answer-value {
   flex: 1;
+  color: var(--color-text-main);
 }
 
 .attachment-list {
   margin-top: 8px;
-  padding: 8px 12px;
-  background: #f5f5f5;
-  border-radius: 4px;
+  padding: 10px 14px;
+  background: var(--surface-glass);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
 }
 
 .attachment-label {
   font-size: 12px;
-  color: #666;
+  color: var(--color-text-muted);
   margin-bottom: 4px;
 }
 
@@ -236,7 +246,7 @@ function formatFileSize(bytes: number): string {
 }
 
 .attachment-link {
-  color: #1890ff;
+  color: var(--color-primary);
   text-decoration: none;
   font-size: 13px;
 }

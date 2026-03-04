@@ -204,7 +204,14 @@ function formatDate(dateStr: string) {
 
 <style scoped>
 .page-header {
+  background: var(--surface-glass);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  padding: 16px 24px;
   margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-raised);
 }
 
 .header-top {

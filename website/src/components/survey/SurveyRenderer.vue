@@ -209,9 +209,13 @@ function handleTempSave() {
 
 <style scoped>
 .survey-renderer {
-  background: #fff;
-  border-radius: 8px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border-radius: var(--radius-lg);
   padding: 24px;
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-raised);
 }
 
 .survey-page {
@@ -223,25 +227,28 @@ function handleTempSave() {
   font-weight: 600;
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-glass);
+  color: var(--color-text-main);
 }
 
 .question-item {
   margin-bottom: 24px;
   padding: 16px;
-  background: #fafafa;
-  border-radius: 4px;
+  background: var(--surface-glass-input);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-inset);
 }
 
 .question-title {
   font-size: 15px;
   font-weight: 500;
   margin-bottom: 12px;
-  color: #1f1f1f;
+  color: var(--color-text-main);
 }
 
 .question-number {
-  color: #1890ff;
+  color: var(--color-primary);
   margin-right: 8px;
 }
 
@@ -264,7 +271,7 @@ function handleTempSave() {
 .attachment-image {
   max-width: 300px;
   max-height: 300px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .attachment-download-btn {
@@ -282,7 +289,7 @@ function handleTempSave() {
 .question-attachment {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed #e8e8e8;
+  border-top: 1px dashed var(--border-glass);
 }
 
 .survey-actions {
@@ -291,6 +298,6 @@ function handleTempSave() {
   gap: 16px;
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #e8e8e8;
+  border-top: 1px solid var(--border-glass);
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <a-layout class="layout">
-    <a-layout-sider v-model:collapsed="collapsed" collapsible>
+    <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light" class="glass-sidebar">
       <div class="logo">
         <span v-if="!collapsed">RMS Survey</span>
         <span v-else>RS</span>
@@ -46,7 +46,7 @@
       </a-menu>
     </a-layout-sider>
     <a-layout>
-      <a-layout-header class="header">
+      <a-layout-header class="header glass-header">
         <div class="header-right">
           <a-dropdown>
             <span class="user-info">
@@ -130,19 +130,19 @@ function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--color-primary);
   font-size: 18px;
   font-weight: bold;
-  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-inset);
 }
 
 .header {
-  background: #fff;
   padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--border-glass);
 }
 
 .header-right {
@@ -155,6 +155,7 @@ function handleLogout() {
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--color-text-main);
 }
 
 .username {
@@ -164,6 +165,6 @@ function handleLogout() {
 .content {
   margin: 0;
   overflow: auto;
-  background: #f0f2f5;
+  background: transparent;
 }
 </style>
