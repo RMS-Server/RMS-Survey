@@ -29,6 +29,7 @@ export interface AnswerView {
   isRead: boolean
   readAt?: string
   readBy?: string
+  ipAddress: string
 }
 
 export interface DownloadQuery {

@@ -15,6 +15,7 @@ type SurveyService struct {
 	projectRepo *repository.ProjectRepo
 	answerRepo  *repository.AnswerRepo
 	systemRepo  *repository.SystemRepo
+	answerSvc   *AnswerService
 }
 
 // NewSurveyService creates a new SurveyService.
@@ -23,6 +24,7 @@ func NewSurveyService(projectRepo *repository.ProjectRepo, answerRepo *repositor
 		projectRepo: projectRepo,
 		answerRepo:  answerRepo,
 		systemRepo:  repository.NewSystemRepo(db),
+		answerSvc:   NewAnswerService(answerRepo, projectRepo, db),
 	}
 }
 
@@ -44,8 +46,23 @@ func (s *SurveyService) LoadProject(req *dto.SurveyLoadRequest) (*dto.SurveyView
 
 // SaveAnswer submits a public answer.
 func (s *SurveyService) SaveAnswer(req *dto.AnswerRequest) (*dto.PublicAnswerView, error) {
-	svc := NewAnswerService(s.answerRepo, s.projectRepo)
-	if err := svc.CreatePublicAnswer(req); err != nil {
+	if err := s.answerSvc.CreatePublicAnswer(req); err != nil {
+		return nil, err
+	}
+	// Return setting from project so frontend can show end page
+	p, err := s.projectRepo.GetProject(req.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.PublicAnswerView{
+		ID:      req.ID,
+		Setting: json.RawMessage(p.Setting),
+	}, nil
+}
+
+// SaveAnswerWithIP submits a public answer with IP address for restriction checking.
+func (s *SurveyService) SaveAnswerWithIP(req *dto.AnswerRequest, ipAddress string) (*dto.PublicAnswerView, error) {
+	if err := s.answerSvc.CreatePublicAnswerWithIP(req, ipAddress); err != nil {
 		return nil, err
 	}
 	// Return setting from project so frontend can show end page
@@ -63,8 +80,14 @@ func (s *SurveyService) SaveAnswer(req *dto.AnswerRequest) (*dto.PublicAnswerVie
 func (s *SurveyService) TempSaveAnswer(req *dto.AnswerRequest) error {
 	tempSave := 1
 	req.TempSave = &tempSave
-	svc := NewAnswerService(s.answerRepo, s.projectRepo)
-	return svc.CreatePublicAnswer(req)
+	return s.answerSvc.CreatePublicAnswer(req)
+}
+
+// TempSaveAnswerWithIP temporarily saves an answer with IP address.
+func (s *SurveyService) TempSaveAnswerWithIP(req *dto.AnswerRequest, ipAddress string) error {
+	tempSave := 1
+	req.TempSave = &tempSave
+	return s.answerSvc.CreatePublicAnswerWithIP(req, ipAddress)
 }
 
 // GetSetting returns the survey setting for a project.

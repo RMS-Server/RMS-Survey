@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rms-survey/server/internal/dto"
+	"github.com/rms-survey/server/internal/pkg/request"
 	"github.com/rms-survey/server/internal/pkg/response"
 	"github.com/rms-survey/server/internal/repository"
 	"github.com/rms-survey/server/internal/service"
@@ -107,7 +108,8 @@ func (h *SurveyHandler) SaveAnswer(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	result, err := h.svc.SaveAnswer(&req)
+	ipAddress := request.GetClientIP(c.Request)
+	result, err := h.svc.SaveAnswerWithIP(&req, ipAddress)
 	if err != nil {
 		response.Fail(c, response.CodeError, err.Error())
 		return
@@ -121,7 +123,8 @@ func (h *SurveyHandler) TempSaveAnswer(c *gin.Context) {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if err := h.svc.TempSaveAnswer(&req); err != nil {
+	ipAddress := request.GetClientIP(c.Request)
+	if err := h.svc.TempSaveAnswerWithIP(&req, ipAddress); err != nil {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}

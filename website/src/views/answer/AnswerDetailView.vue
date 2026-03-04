@@ -45,6 +45,9 @@
           <a-descriptions-item label="提交人">
             {{ answer.createBy || '匿名' }}
           </a-descriptions-item>
+          <a-descriptions-item label="IP地址">
+            {{ answer.ipAddress || '-' }}
+          </a-descriptions-item>
           <a-descriptions-item v-if="answer.examScore" label="得分">
             {{ answer.examScore }}
           </a-descriptions-item>

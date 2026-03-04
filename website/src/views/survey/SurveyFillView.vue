@@ -154,8 +154,16 @@ async function handleSubmit(submittedAnswers: Record<string, AnswerValue>) {
     // Clear draft after successful submission
     clearDraft(surveyId.value)
     message.success('提交成功')
-  } catch {
-    message.error('提交失败，请重试')
+  } catch (error: any) {
+    // Handle IP restriction errors with friendly messages
+    const errorMsg = error?.response?.data?.message || error?.message || ''
+    if (errorMsg.includes('ip already submitted')) {
+      message.error('该IP已达到最大提交次数')
+    } else if (errorMsg.includes('submission interval too short')) {
+      message.error('提交过于频繁，请稍后再试')
+    } else {
+      message.error('提交失败，请重试')
+    }
   }
 }
 

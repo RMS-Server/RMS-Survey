@@ -12,10 +12,24 @@ import (
 	"github.com/rms-survey/server/internal/model"
 	"github.com/rms-survey/server/internal/repository"
 	"github.com/xuri/excelize/v2"
+	"gorm.io/gorm"
 )
 
 // ErrAccessDenied is returned when user lacks permission.
 var ErrAccessDenied = errors.New("access denied")
+
+// ErrIPAlreadySubmitted is returned when IP has already submitted an answer.
+var ErrIPAlreadySubmitted = errors.New("ip already submitted")
+
+// ErrIPIntervalTooShort is returned when IP submits too quickly.
+var ErrIPIntervalTooShort = errors.New("submission interval too short")
+
+// SurveySetting represents the survey settings for IP restriction.
+type SurveySetting struct {
+	IPLimitEnabled  bool `json:"ipLimitEnabled"`  // IP restriction master switch
+	IPMaxSubmissions int  `json:"ipMaxSubmissions"` // Max submissions per IP (0 = unlimited)
+	IPInterval      int  `json:"ipInterval"`       // Min seconds between submissions from same IP (0 = no limit)
+}
 
 // uploadSurveySchema represents the survey structure for Excel import.
 // It uses Pages structure for compatibility with export function.
@@ -53,11 +67,12 @@ type AnswerService struct {
 	repo        *repository.AnswerRepo
 	projectRepo *repository.ProjectRepo
 	projectSvc  *ProjectService
+	db          *gorm.DB
 }
 
 // NewAnswerService creates a new AnswerService.
-func NewAnswerService(repo *repository.AnswerRepo, projectRepo *repository.ProjectRepo) *AnswerService {
-	return &AnswerService{repo: repo, projectRepo: projectRepo, projectSvc: NewProjectService(projectRepo)}
+func NewAnswerService(repo *repository.AnswerRepo, projectRepo *repository.ProjectRepo, db *gorm.DB) *AnswerService {
+	return &AnswerService{repo: repo, projectRepo: projectRepo, projectSvc: NewProjectService(projectRepo), db: db}
 }
 
 // ListAnswers returns a paginated list of answers.
@@ -145,7 +160,7 @@ func (s *AnswerService) CreateAnswer(req *dto.AnswerRequest, userInfo *dto.UserI
 	if _, err := s.projectRepo.HasProjectAccess(req.ProjectID, userInfo); err != nil {
 		return err
 	}
-	return s.doCreateAnswer(req, userInfo)
+	return s.doCreateAnswer(req, userInfo, "")
 }
 
 // CreatePublicAnswer inserts a new answer for public survey submission (no access check).
@@ -154,11 +169,100 @@ func (s *AnswerService) CreatePublicAnswer(req *dto.AnswerRequest) error {
 	if _, err := s.projectRepo.GetProject(req.ProjectID); err != nil {
 		return err
 	}
-	return s.doCreateAnswer(req, &dto.UserInfo{})
+	return s.doCreateAnswer(req, &dto.UserInfo{}, "")
+}
+
+// CreatePublicAnswerWithIP inserts a new answer with IP address and performs IP restriction check.
+// Uses MySQL advisory lock to prevent race conditions in concurrent submissions.
+func (s *AnswerService) CreatePublicAnswerWithIP(req *dto.AnswerRequest, ipAddress string) error {
+	project, err := s.projectRepo.GetProject(req.ProjectID)
+	if err != nil {
+		return err
+	}
+
+	// Check if this is a real submission (not temp save)
+	isRealSubmission := req.TempSave == nil || *req.TempSave == 0
+
+	// Parse settings once
+	var setting SurveySetting
+	if project.Setting != "" {
+		_ = json.Unmarshal([]byte(project.Setting), &setting)
+	}
+
+	// Determine if IP restriction applies
+	needIPCheck := isRealSubmission && ipAddress != "" && setting.IPLimitEnabled
+
+	// Acquire MySQL advisory lock OUTSIDE the transaction
+	// Lock must be held until AFTER transaction commits to prevent race conditions
+	if needIPCheck {
+		lockName := fmt.Sprintf("ip_submit:%s:%s", req.ProjectID, ipAddress)
+		var lockResult int
+		if err := s.db.Raw("SELECT GET_LOCK(?, 5)", lockName).Scan(&lockResult).Error; err != nil {
+			return fmt.Errorf("acquire IP lock: %w", err)
+		}
+		if lockResult != 1 {
+			return errors.New("submission in progress, please retry")
+		}
+		defer func() {
+			s.db.Exec("SELECT RELEASE_LOCK(?)", lockName)
+		}()
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// IP restriction check within transaction (lock is already held)
+		if needIPCheck {
+			// Check max submissions per IP
+			if setting.IPMaxSubmissions > 0 {
+				var count int64
+				if err := tx.Model(&model.Answer{}).
+					Where("project_id = ? AND ip_address = ? AND (temp_save IS NULL OR temp_save = 0)", req.ProjectID, ipAddress).
+					Count(&count).Error; err != nil {
+					return fmt.Errorf("check IP submission count: %w", err)
+				}
+				if count >= int64(setting.IPMaxSubmissions) {
+					return ErrIPAlreadySubmitted
+				}
+			}
+
+			// Check submission interval
+			if setting.IPInterval > 0 {
+				var latest model.Answer
+				err := tx.Where("project_id = ? AND ip_address = ? AND (temp_save IS NULL OR temp_save = 0)", req.ProjectID, ipAddress).
+					Order("create_at DESC").
+					First(&latest).Error
+				if err != nil && err != gorm.ErrRecordNotFound {
+					return fmt.Errorf("check IP interval: %w", err)
+				}
+				if err == nil {
+					elapsed := time.Since(latest.CreatedAt).Seconds()
+					if elapsed < float64(setting.IPInterval) {
+						return ErrIPIntervalTooShort
+					}
+				}
+			}
+		}
+
+		// Create answer within the same transaction
+		id, err := nanoid.New()
+		if err != nil {
+			return fmt.Errorf("generate id: %w", err)
+		}
+		a := &model.Answer{
+			BaseModel: model.BaseModel{
+				ID: id,
+			},
+			ProjectID: req.ProjectID,
+			Answer:    string(req.Answer),
+			MetaInfo:  string(req.MetaInfo),
+			TempSave:  req.TempSave,
+			IPAddress: ipAddress,
+		}
+		return tx.Create(a).Error
+	})
 }
 
 // doCreateAnswer performs the actual answer creation.
-func (s *AnswerService) doCreateAnswer(req *dto.AnswerRequest, userInfo *dto.UserInfo) error {
+func (s *AnswerService) doCreateAnswer(req *dto.AnswerRequest, userInfo *dto.UserInfo, ipAddress string) error {
 	id, err := nanoid.New()
 	if err != nil {
 		return fmt.Errorf("generate id: %w", err)
@@ -172,6 +276,7 @@ func (s *AnswerService) doCreateAnswer(req *dto.AnswerRequest, userInfo *dto.Use
 		Answer:    string(req.Answer),
 		MetaInfo:  string(req.MetaInfo),
 		TempSave:  req.TempSave,
+		IPAddress: ipAddress,
 	}
 	return s.repo.CreateAnswer(a)
 }
@@ -320,8 +425,8 @@ func (s *AnswerService) ExportAnswers(query *dto.DownloadQuery, userInfo *dto.Us
 	sheet := "Sheet1"
 
 	// Build dynamic headers: fixed columns first, then one column per question.
-	headers := make([]string, 0, 2+len(questions))
-	headers = append(headers, "ID", "Submit Time")
+	headers := make([]string, 0, 3+len(questions))
+	headers = append(headers, "ID", "Submit Time", "IP Address")
 	for _, q := range questions {
 		title := q.title
 		if title == "" {
@@ -344,8 +449,8 @@ func (s *AnswerService) ExportAnswers(query *dto.DownloadQuery, userInfo *dto.Us
 			_ = json.Unmarshal([]byte(a.Answer), &answerMap)
 		}
 
-		values := make([]interface{}, 0, 2+len(questions))
-		values = append(values, a.ID, a.CreatedAt.Format("2006-01-02 15:04:05"))
+		values := make([]interface{}, 0, 3+len(questions))
+		values = append(values, a.ID, a.CreatedAt.Format("2006-01-02 15:04:05"), a.IPAddress)
 		for _, q := range questions {
 			if answerMap != nil {
 				values = append(values, formatAnswerValue(answerMap[q.id]))
@@ -423,6 +528,7 @@ func toAnswerView(a model.Answer) dto.AnswerView {
 		IsRead:    isRead,
 		ReadAt:    readAt,
 		ReadBy:    a.ReadBy,
+		IPAddress: a.IPAddress,
 	}
 }
 

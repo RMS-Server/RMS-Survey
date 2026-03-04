@@ -38,6 +38,7 @@ type AnswerView struct {
 	IsRead    bool            `json:"isRead"`
 	ReadAt    string          `json:"readAt,omitempty"`
 	ReadBy    string          `json:"readBy,omitempty"`
+	IPAddress string          `json:"ipAddress"`
 }
 
 // DownloadQuery holds parameters for answer export.

@@ -21,20 +21,21 @@ func (Account) TableName() string { return "t_account" }
 // Answer maps to t_answer.
 type Answer struct {
 	BaseModel
-	ProjectID        string   `gorm:"column:project_id;size:64;not null" json:"projectId"`
-	TempAnswer       string   `gorm:"column:temp_answer;type:text" json:"tempAnswer"`
-	Survey           string   `gorm:"column:survey;type:longtext" json:"survey"`
-	Answer           string   `gorm:"column:answer;type:text" json:"answer"`
-	Attachment       string   `gorm:"column:attachment;size:1024" json:"attachment"`
-	MetaInfo         string   `gorm:"column:meta_info;type:text" json:"metaInfo"`
-	TempSave         *int     `gorm:"column:temp_save" json:"tempSave"`
-	ExamInfo         string   `gorm:"column:exam_info;type:text" json:"examInfo"`
-	ExamExerciseType string   `gorm:"column:exam_exercise_type;size:4" json:"examExerciseType"`
-	ExamScore        *float32 `gorm:"column:exam_score" json:"examScore"`
-	RepoID           string   `gorm:"column:repo_id;size:256" json:"repoId"`
-	IsRead           *bool    `gorm:"column:is_read;default:false" json:"isRead"`
+	ProjectID        string     `gorm:"column:project_id;size:64;not null" json:"projectId"`
+	TempAnswer       string     `gorm:"column:temp_answer;type:text" json:"tempAnswer"`
+	Survey           string     `gorm:"column:survey;type:longtext" json:"survey"`
+	Answer           string     `gorm:"column:answer;type:text" json:"answer"`
+	Attachment       string     `gorm:"column:attachment;size:1024" json:"attachment"`
+	MetaInfo         string     `gorm:"column:meta_info;type:text" json:"metaInfo"`
+	TempSave         *int       `gorm:"column:temp_save" json:"tempSave"`
+	ExamInfo         string     `gorm:"column:exam_info;type:text" json:"examInfo"`
+	ExamExerciseType string     `gorm:"column:exam_exercise_type;size:4" json:"examExerciseType"`
+	ExamScore        *float32   `gorm:"column:exam_score" json:"examScore"`
+	RepoID           string     `gorm:"column:repo_id;size:256" json:"repoId"`
+	IsRead           *bool      `gorm:"column:is_read;default:false" json:"isRead"`
 	ReadAt           *time.Time `gorm:"column:read_at" json:"readAt"`
-	ReadBy           string   `gorm:"column:read_by;size:256" json:"readBy"`
+	ReadBy           string     `gorm:"column:read_by;size:256" json:"readBy"`
+	IPAddress        string     `gorm:"column:ip_address;size:45;index" json:"ipAddress"`
 }
 
 func (Answer) TableName() string { return "t_answer" }

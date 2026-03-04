@@ -124,6 +124,7 @@ const columns = [
   { title: 'ID', dataIndex: 'id', width: 200, ellipsis: true },
   { title: '状态', key: 'tempSave', width: 100 },
   { title: '已读', key: 'isRead', width: 80 },
+  { title: 'IP地址', dataIndex: 'ipAddress', width: 140 },
   { title: '提交时间', key: 'createAt', width: 180 },
   { title: '操作', key: 'actions', width: 150 }
 ]

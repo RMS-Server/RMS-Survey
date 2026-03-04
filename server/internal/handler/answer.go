@@ -24,7 +24,7 @@ type AnswerHandler struct {
 func NewAnswerHandler(db *gorm.DB) *AnswerHandler {
 	answerRepo := repository.NewAnswerRepo(db)
 	projectRepo := repository.NewProjectRepo(db)
-	svc := service.NewAnswerService(answerRepo, projectRepo)
+	svc := service.NewAnswerService(answerRepo, projectRepo, db)
 	return &AnswerHandler{svc: svc}
 }
 

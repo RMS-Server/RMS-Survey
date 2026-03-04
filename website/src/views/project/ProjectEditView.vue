@@ -13,6 +13,10 @@
         />
       </div>
       <div class="header-right">
+        <a-button @click="settingModalVisible = true">
+          <template #icon><SettingOutlined /></template>
+          设置
+        </a-button>
         <a-button @click="logicModalVisible = true">
           <template #icon><BranchesOutlined /></template>
           逻辑跳转
@@ -170,6 +174,21 @@
       />
     </a-modal>
 
+    <!-- 设置模态框 -->
+    <a-modal
+      v-model:open="settingModalVisible"
+      title="问卷设置"
+      :width="600"
+      :footer="null"
+    >
+      <SurveySettingEditor
+        :project-id="projectId || ''"
+        :setting="surveySetting"
+        @update:setting="handleUpdateSetting"
+        @cancel="settingModalVisible = false"
+      />
+    </a-modal>
+
     <!-- 预览模态框 -->
     <a-modal
       v-model:open="previewVisible"
@@ -189,6 +208,7 @@ import { message } from 'ant-design-vue'
 import draggable from 'vuedraggable'
 import { v4 as uuidv4 } from 'uuid'
 import { useProjectStore } from '@/stores/project'
+import { surveyApi } from '@/api/survey'
 import {
   ArrowLeftOutlined,
   SaveOutlined,
@@ -203,13 +223,15 @@ import {
   FormOutlined,
   DownCircleOutlined,
   StarOutlined,
-  BranchesOutlined
+  BranchesOutlined,
+  SettingOutlined
 } from '@ant-design/icons-vue'
 import SurveyRenderer from '@/components/survey/SurveyRenderer.vue'
 import LogicRuleEditor from '@/components/survey/LogicRuleEditor.vue'
 import OptionsEditor from '@/components/survey/OptionsEditor.vue'
 import QuestionAttachmentUpload from '@/components/survey/QuestionAttachmentUpload.vue'
-import type { SurveyElement, SurveySchema, QuestionAttachment, SurveyLogic } from '@/types/survey'
+import SurveySettingEditor from '@/components/survey/SurveySettingEditor.vue'
+import type { SurveyElement, SurveySchema, QuestionAttachment, SurveyLogic, SurveySetting } from '@/types/survey'
 
 const router = useRouter()
 const route = useRoute()
@@ -221,11 +243,13 @@ const isEdit = computed(() => !!projectId.value)
 const projectName = ref('')
 const elements = ref<SurveyElement[]>([])
 const surveyLogic = ref<SurveyLogic>({ rules: [] })
+const surveySetting = ref<SurveySetting>({ projectId: '' })
 const selectedIndex = ref(-1)
 const saving = ref(false)
 const publishing = ref(false)
 const previewVisible = ref(false)
 const logicModalVisible = ref(false)
+const settingModalVisible = ref(false)
 
 const selectedElement = computed(() => {
   if (selectedIndex.value >= 0 && selectedIndex.value < elements.value.length) {
@@ -482,6 +506,27 @@ async function handlePublish() {
   }
 }
 
+async function handleUpdateSetting(setting: SurveySetting) {
+  if (!projectId.value) return
+  try {
+    await surveyApi.updateSetting({ projectId: projectId.value, setting })
+    surveySetting.value = setting
+    settingModalVisible.value = false
+  } catch {
+    message.error('保存设置失败')
+  }
+}
+
+async function loadSetting() {
+  if (!projectId.value) return
+  try {
+    const setting = await surveyApi.getSetting(projectId.value)
+    surveySetting.value = setting
+  } catch {
+    // Ignore - setting may not exist yet
+  }
+}
+
 onMounted(async () => {
   if (projectId.value) {
     try {
@@ -496,6 +541,8 @@ onMounted(async () => {
           surveyLogic.value = survey.logic
         }
       }
+      // Load survey settings
+      await loadSetting()
     } catch {
       message.error('加载问卷失败')
       router.push('/project')

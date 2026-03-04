@@ -106,15 +106,9 @@ export interface OptionStat {
 // Survey settings
 export interface SurveySetting {
   projectId: string
-  startTime?: string
-  endTime?: string
-  answerLimit?: number
-  showProgressBar?: boolean
-  showQuestionNumber?: boolean
-  shuffleQuestions?: boolean
-  allowBack?: boolean
-  allowSave?: boolean
-  captchaRequired?: boolean
+  ipLimitEnabled?: boolean      // IP restriction master switch
+  ipMaxSubmissions?: number     // Max submissions per IP (0 = unlimited)
+  ipInterval?: number           // Min seconds between submissions from same IP (0 = no limit)
   [key: string]: any
 }
 
