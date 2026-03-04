@@ -2,17 +2,13 @@ package service
 
 import (
 	"errors"
-	"log"
 	"strings"
-	"sync"
 
 	nanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/rms-survey/server/internal/dto"
 	"github.com/rms-survey/server/internal/model"
-	rsapkg "github.com/rms-survey/server/internal/pkg/rsa"
 	"github.com/rms-survey/server/internal/repository"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 var (
@@ -23,14 +19,6 @@ var (
 	ErrInvalidPassword    = errors.New("invalid old password")
 )
 
-// rsaKeyCache holds the in-memory RSA key pair to avoid repeated DB lookups.
-var rsaKeyCache struct {
-	sync.RWMutex
-	privateKey string
-	publicKey  string
-	loaded     bool
-}
-
 // UserService handles user business logic.
 type UserService struct {
 	repo *repository.UserRepo
@@ -39,123 +27,6 @@ type UserService struct {
 // NewUserService creates a new UserService.
 func NewUserService(repo *repository.UserRepo) *UserService {
 	return &UserService{repo: repo}
-}
-
-// GetRSAPublicKey returns the RSA public key (raw base64, Java-compatible).
-func (s *UserService) GetRSAPublicKey() (string, error) {
-	rsaKeyCache.RLock()
-	if rsaKeyCache.loaded {
-		pub := rsaKeyCache.publicKey
-		rsaKeyCache.RUnlock()
-		return pub, nil
-	}
-	rsaKeyCache.RUnlock()
-
-	rsaKeyCache.Lock()
-	defer rsaKeyCache.Unlock()
-	// Double-check after acquiring write lock
-	if rsaKeyCache.loaded {
-		return rsaKeyCache.publicKey, nil
-	}
-
-	// Try loading from DB first
-	info, err := s.repo.FindSysInfoByName("rsa_private_key")
-	if err == nil {
-		// Handle escaped newlines from DB storage
-		privKey := strings.ReplaceAll(info.Description, "\\n", "\n")
-		pubKeyStored := strings.ReplaceAll(info.Setting, "\\n", "\n")
-		// Convert to raw base64 if stored as PEM format
-		pubKey := rsapkg.ExtractPublicKeyBase64(pubKeyStored)
-		log.Printf("[DEBUG] Loaded RSA keys from DB, privKey len: %d, pubKey len: %d", len(privKey), len(pubKey))
-		rsaKeyCache.privateKey = privKey
-		rsaKeyCache.publicKey = pubKey
-		rsaKeyCache.loaded = true
-		return rsaKeyCache.publicKey, nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", err
-	}
-
-	// Generate new key pair
-	priv, pub, err := rsapkg.GenerateKeyPair()
-	if err != nil {
-		return "", err
-	}
-	rsaKeyCache.privateKey = priv
-	rsaKeyCache.publicKey = pub
-	rsaKeyCache.loaded = true
-
-	id, _ := nanoid.New()
-	// Store private key as PEM, public key as raw base64 (Java-compatible)
-	sysInfo := &model.SysInfo{
-		Name:        "rsa_private_key",
-		Description: priv,
-		Setting:     pub,
-	}
-	sysInfo.ID = id
-	_ = s.repo.SaveSysInfo(sysInfo)
-
-	return pub, nil
-}
-
-// getPrivateKey returns the cached RSA private key.
-func (s *UserService) getPrivateKey() (string, error) {
-	if _, err := s.GetRSAPublicKey(); err != nil {
-		return "", err
-	}
-	rsaKeyCache.RLock()
-	priv := rsaKeyCache.privateKey
-	rsaKeyCache.RUnlock()
-	return priv, nil
-}
-
-// Login verifies credentials and returns the user on success.
-// encryptedPassword is RSA-encrypted (base64) or plaintext if RSA is unavailable.
-func (s *UserService) Login(username, encryptedPassword string) (*model.User, error) {
-	log.Printf("[DEBUG] Login attempt - username: %s, encryptedPassword len: %d", username, len(encryptedPassword))
-
-	// Print current public key for debugging
-	pubKey, _ := s.GetRSAPublicKey()
-	log.Printf("[DEBUG] Current public key (first 100 chars): %s", pubKey[:min(100, len(pubKey))])
-
-	account, err := s.repo.FindByUsername(username)
-	if err != nil {
-		log.Printf("[DEBUG] User not found: %v", err)
-		return nil, ErrInvalidCredentials
-	}
-
-	if account.Status != 1 {
-		log.Printf("[DEBUG] User disabled - status: %d", account.Status)
-		return nil, ErrUserDisabled
-	}
-
-	// Attempt RSA decryption; fall back to plaintext for non-encrypted clients.
-	password := encryptedPassword
-	privKey, privKeyErr := s.getPrivateKey()
-	log.Printf("[DEBUG] Private key available: %v, len: %d", privKeyErr == nil, len(privKey))
-
-	if privKeyErr == nil && privKey != "" {
-		decrypted, decryptErr := rsapkg.Decrypt(privKey, encryptedPassword)
-		if decryptErr == nil {
-			password = decrypted
-			log.Printf("[DEBUG] RSA decryption successful, password len: %d", len(password))
-		} else {
-			log.Printf("[DEBUG] RSA decryption failed: %v", decryptErr)
-		}
-	}
-
-	log.Printf("[DEBUG] Comparing password hash, input password: %q, stored hash len: %d", password, len(account.AuthSecret))
-	if err := bcrypt.CompareHashAndPassword([]byte(account.AuthSecret), []byte(password)); err != nil {
-		log.Printf("[DEBUG] Password mismatch: %v", err)
-		return nil, ErrInvalidCredentials
-	}
-
-	user, err := s.repo.FindUserByID(account.UserID)
-	if err != nil {
-		return nil, ErrUserNotFound
-	}
-	log.Printf("[DEBUG] Login successful for user: %s", user.Name)
-	return user, nil
 }
 
 // GetCurrentUser returns a UserView for the given user ID.
@@ -190,23 +61,14 @@ func (s *UserService) ListUsers(req dto.UserQueryRequest) (dto.PageResponse[dto.
 }
 
 // CreateUser creates a new user with an associated account.
-// Password may be RSA-encrypted (base64) or plaintext.
+// This is kept for admin user creation. Password should be pre-hashed.
 func (s *UserService) CreateUser(req dto.CreateUserRequest) error {
 	// Check username uniqueness
 	if _, err := s.repo.FindByUsername(req.Username); err == nil {
 		return ErrUsernameExists
 	}
 
-	// Attempt RSA decryption; fall back to plaintext for non-encrypted clients.
 	password := req.Password
-	privKey, privKeyErr := s.getPrivateKey()
-	if privKeyErr == nil && privKey != "" {
-		decrypted, decryptErr := rsapkg.Decrypt(privKey, req.Password)
-		if decryptErr == nil {
-			password = decrypted
-		}
-	}
-
 	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -322,37 +184,17 @@ func (s *UserService) DeleteUser(id string) error {
 }
 
 // UpdatePassword changes a user's password after verifying the old one.
-// Passwords may be RSA-encrypted (base64) or plaintext.
 func (s *UserService) UpdatePassword(userID, oldPwd, newPwd string) error {
 	account, err := s.repo.FindAccountByUserID(userID)
 	if err != nil {
 		return ErrUserNotFound
 	}
 
-	// Attempt RSA decryption for old password
-	oldPassword := oldPwd
-	privKey, privKeyErr := s.getPrivateKey()
-	if privKeyErr == nil && privKey != "" {
-		decrypted, decryptErr := rsapkg.Decrypt(privKey, oldPwd)
-		if decryptErr == nil {
-			oldPassword = decrypted
-		}
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(account.AuthSecret), []byte(oldPassword)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(account.AuthSecret), []byte(oldPwd)); err != nil {
 		return ErrInvalidPassword
 	}
 
-	// Attempt RSA decryption for new password
-	newPassword := newPwd
-	if privKeyErr == nil && privKey != "" {
-		decrypted, decryptErr := rsapkg.Decrypt(privKey, newPwd)
-		if decryptErr == nil {
-			newPassword = decrypted
-		}
-	}
-
-	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(newPwd), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
@@ -375,19 +217,6 @@ func (s *UserService) GetUserOverview(userID string) (*dto.UserOverview, error) 
 		TotalAnswers:  int(totalAnswers),
 		TodayAnswers:  int(todayAnswers),
 	}, nil
-}
-
-// GetRegisterRoles returns roles that are available for self-registration.
-func (s *UserService) GetRegisterRoles() ([]dto.RegisterRoleView, error) {
-	roles, err := s.repo.ListRegisterRoles()
-	if err != nil {
-		return nil, err
-	}
-	views := make([]dto.RegisterRoleView, 0, len(roles))
-	for _, r := range roles {
-		views = append(views, dto.RegisterRoleView{ID: r.ID, Name: r.Name, Code: r.Code})
-	}
-	return views, nil
 }
 
 // FindUserIDByUsername returns the user ID for the given auth_account (username).

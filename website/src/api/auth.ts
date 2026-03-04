@@ -1,32 +1,27 @@
 import request from './index'
-import type { LoginRequest, LoginResponse, RegisterRequest, UserView, UserQueryRequest, CreateUserRequest, UpdateUserRequest, UserOverview, RegisterRoleView, UserTaskView, UserTaskQuery } from '@/types/user'
+import type { UserView, UserQueryRequest, CreateUserRequest, UpdateUserRequest, UserOverview, UserTaskView, UserTaskQuery } from '@/types/user'
 import type { PageResponse } from '@/types/api'
 
-// Public APIs (no auth required)
+// OAuth APIs (public)
 export const authApi = {
-  // Get RSA public key for password encryption
-  getRsaPublicKey(): Promise<string> {
-    return request.get('/public/rsaPublicKey')
+  // Get OAuth configuration (auth URL, client ID, etc.)
+  getOAuthAuthorize(): Promise<{ authUrl: string; clientId: string; redirectUri: string; scopes: string }> {
+    return request.get('/oauth/authorize')
   },
 
-  // Login with username and encrypted password
-  login(data: LoginRequest): Promise<LoginResponse> {
-    return request.post('/public/login', data)
+  // Handle OAuth callback with code and PKCE verifier (POST with JSON body)
+  oauthCallback(data: { code: string; state: string; codeVerifier: string }): Promise<{ token: string; user: UserView }> {
+    return request.post('/oauth/callback', data)
   },
 
-  // Logout
+  // Refresh local JWT using stored refresh token
+  oauthRefresh(): Promise<{ token: string; user: UserView }> {
+    return request.post('/oauth/refresh')
+  },
+
+  // Logout and clear OAuth session
   logout(): Promise<void> {
-    return request.post('/public/logout')
-  },
-
-  // Register new user
-  register(data: RegisterRequest): Promise<void> {
-    return request.post('/public/register', data)
-  },
-
-  // Get available roles for registration
-  getRegisterRoles(): Promise<RegisterRoleView[]> {
-    return request.get('/public/listRegisterRole')
+    return request.post('/oauth/logout')
   }
 }
 

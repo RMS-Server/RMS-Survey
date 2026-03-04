@@ -8,14 +8,11 @@ import (
 	"image/color"
 	"image/png"
 	"math/big"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	nanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/rms-survey/server/internal/config"
 	"github.com/rms-survey/server/internal/dto"
-	jwtpkg "github.com/rms-survey/server/internal/pkg/jwt"
 	"github.com/rms-survey/server/internal/pkg/cache"
 	"github.com/rms-survey/server/internal/pkg/response"
 	"github.com/rms-survey/server/internal/repository"
@@ -45,11 +42,8 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 // user    -> /api/user
 // root    -> r (for /currentUser)
 func (h *UserHandler) RegisterRoutes(public, captchaGrp, userGrp, root gin.IRouter) {
-	public.POST("/login", h.Login)
-	public.POST("/logout", h.Logout)
-	public.POST("/register", h.Register)
-	public.GET("/rsaPublicKey", h.GetRSAPublicKey)
-	public.GET("/listRegisterRole", h.ListRegisterRoles)
+	// OAuth routes are handled separately by OAuthHandler
+	// Local auth routes (login/register/rsaPublicKey) removed
 
 	captchaGrp.GET("/get", h.GetCaptcha)
 	captchaGrp.POST("/check", h.CheckCaptcha)
@@ -67,93 +61,6 @@ func (h *UserHandler) RegisterRoutes(public, captchaGrp, userGrp, root gin.IRout
 	userGrp.DELETE("/:id", h.DeleteUser)
 	userGrp.GET("/:id", h.GetUser)
 	userGrp.POST("/bindRole", h.BindRole)
-}
-
-// Login handles POST /api/public/login
-func (h *UserHandler) Login(c *gin.Context) {
-	var req dto.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, response.CodeError, "invalid request")
-		return
-	}
-
-	user, err := h.svc.Login(req.Username, req.Password)
-	if err != nil {
-		response.Fail(c, response.CodeError, "username or password error")
-		return
-	}
-
-	userInfo := dto.UserInfo{
-		UserID:   user.ID,
-		Username: req.Username,
-	}
-	if auths, err := h.svc.GetUserAuthorities(user.ID); err == nil {
-		userInfo.Roles = auths
-	}
-
-	token, err := jwtpkg.GenerateToken(userInfo)
-	if err != nil {
-		response.Fail(c, response.CodeError, "failed to generate token")
-		return
-	}
-
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     config.C.JWT.CookieName,
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-	})
-	c.Header("Authorization", token)
-
-	view, _ := h.svc.GetCurrentUser(user.ID)
-	response.OK(c, dto.LoginResponse{Token: token, User: *view})
-}
-
-// Logout handles POST /api/public/logout
-func (h *UserHandler) Logout(c *gin.Context) {
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     config.C.JWT.CookieName,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		MaxAge:   -1,
-	})
-	response.OK(c, nil)
-}
-
-// Register handles POST /api/public/register
-func (h *UserHandler) Register(c *gin.Context) {
-	var req dto.RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, response.CodeError, "invalid request")
-		return
-	}
-
-	createReq := dto.CreateUserRequest{
-		Username: req.Username,
-		Password: req.Password,
-		Name:     req.Name,
-		Status:   1,
-	}
-	if req.Role != "" {
-		createReq.Roles = []string{req.Role}
-	}
-
-	if err := h.svc.CreateUser(createReq); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	response.OK(c, nil)
-}
-
-// GetRSAPublicKey handles GET /api/public/rsaPublicKey
-func (h *UserHandler) GetRSAPublicKey(c *gin.Context) {
-	pub, err := h.svc.GetRSAPublicKey()
-	if err != nil {
-		response.Fail(c, response.CodeError, "failed to get RSA public key")
-		return
-	}
-	response.OK(c, pub)
 }
 
 // CurrentUser handles GET /currentUser
@@ -293,16 +200,6 @@ func (h *UserHandler) UserOverview(c *gin.Context) {
 		return
 	}
 	response.OK(c, overview)
-}
-
-// ListRegisterRoles handles GET /api/public/listRegisterRole
-func (h *UserHandler) ListRegisterRoles(c *gin.Context) {
-	roles, err := h.svc.GetRegisterRoles()
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	response.OK(c, roles)
 }
 
 // ImportUser handles POST /importUser — reads an Excel file and bulk-creates users.

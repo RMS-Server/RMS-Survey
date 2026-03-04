@@ -35,6 +35,7 @@ func main() {
 		&model.Template{},
 		&model.SysInfo{},
 		&model.CommDictItem{},
+		&model.OAuthSession{},
 	); err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}

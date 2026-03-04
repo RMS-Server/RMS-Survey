@@ -12,6 +12,8 @@ import (
 // publicPrefixes lists API path prefixes that skip authentication.
 var publicPrefixes = []string{
 	"/api/public/",
+	"/api/oauth/authorize",
+	"/api/oauth/callback",
 	"/captcha/",
 }
 
@@ -38,7 +40,7 @@ func isPublicPath(method, path string) bool {
 	return false
 }
 
-// Auth extracts and validates JWT from cookie or query param.
+// Auth extracts and validates JWT from cookie, Authorization header, or query param.
 func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if isPublicPath(c.Request.Method, c.Request.URL.Path) {
@@ -51,6 +53,19 @@ func Auth() gin.HandlerFunc {
 		// Try cookie first
 		if cookie, err := c.Cookie(config.C.JWT.CookieName); err == nil && cookie != "" {
 			tokenStr = cookie
+		}
+
+		// Try Authorization header (Bearer token)
+		if tokenStr == "" {
+			authHeader := c.GetHeader("Authorization")
+			if authHeader != "" {
+				// Support both "Bearer <token>" and just "<token>"
+				if strings.HasPrefix(authHeader, "Bearer ") {
+					tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+				} else {
+					tokenStr = authHeader
+				}
+			}
 		}
 
 		// Fall back to query param

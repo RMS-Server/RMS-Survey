@@ -9,9 +9,9 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true }
   },
   {
-    path: '/register',
-    name: 'Register',
-    component: () => import('@/views/auth/RegisterView.vue'),
+    path: '/oauth/callback',
+    name: 'OAuthCallback',
+    component: () => import('@/views/auth/OAuthCallbackView.vue'),
     meta: { public: true }
   },
   {

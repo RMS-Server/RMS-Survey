@@ -23,7 +23,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: '../server-go/static',
+    outDir: '../server/static',
     emptyOutDir: true
   }
 })

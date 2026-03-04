@@ -145,16 +145,21 @@ func (Template) TableName() string { return "t_template" }
 // User maps to t_user.
 type User struct {
 	BaseModel
-	Name         string     `gorm:"column:name;size:50;not null" json:"name"`
-	DeptID       string     `gorm:"column:dept_id;size:20" json:"deptId"`
-	Gender       string     `gorm:"column:gender;size:10" json:"gender"`
-	Birthday     *time.Time `gorm:"column:birthday;type:date" json:"birthday"`
-	Phone        string     `gorm:"column:phone;size:20" json:"phone"`
-	Email        string     `gorm:"column:email;size:50" json:"email"`
-	Avatar       string     `gorm:"column:avatar;size:200" json:"avatar"`
-	Status       int        `gorm:"column:status;not null;default:1" json:"status"`
-	Profile      string     `gorm:"column:profile;size:255" json:"profile"`
-	CorrectTimes *int       `gorm:"column:correct_times" json:"correctTimes"`
+	Name               string     `gorm:"column:name;size:50;not null" json:"name"`
+	DeptID             string     `gorm:"column:dept_id;size:20" json:"deptId"`
+	Gender             string     `gorm:"column:gender;size:10" json:"gender"`
+	Birthday           *time.Time `gorm:"column:birthday;type:date" json:"birthday"`
+	Phone              string     `gorm:"column:phone;size:20" json:"phone"`
+	Email              string     `gorm:"column:email;size:50" json:"email"`
+	Avatar             string     `gorm:"column:avatar;size:200" json:"avatar"`
+	Status             int        `gorm:"column:status;not null;default:1" json:"status"`
+	Profile            string     `gorm:"column:profile;size:255" json:"profile"`
+	CorrectTimes       *int       `gorm:"column:correct_times" json:"correctTimes"`
+	SSOID              *string    `gorm:"column:sso_id;size:64;uniqueIndex" json:"ssoId"`
+	SSOLastSync        *time.Time `gorm:"column:sso_last_sync" json:"ssoLastSync"`
+	SSOPermissionLevel *int       `gorm:"column:sso_permission_level" json:"ssoPermissionLevel"`
+	SSOGroupID         *string    `gorm:"column:sso_group_id;size:64" json:"ssoGroupId"`
+	SSOGroupName       *string    `gorm:"column:sso_group_name;size:128" json:"ssoGroupName"`
 }
 
 func (User) TableName() string { return "t_user" }
@@ -168,3 +173,15 @@ type UserRole struct {
 }
 
 func (UserRole) TableName() string { return "t_user_role" }
+
+// OAuthSession stores refresh tokens for automatic token refresh.
+type OAuthSession struct {
+	BaseModelNoSoftDelete
+	UserID        string     `gorm:"column:user_id;size:64;not null;index" json:"userId"`
+	RefreshToken  string     `gorm:"column:refresh_token;size:512;not null;uniqueIndex" json:"-"`
+	ExpiresAt     time.Time  `gorm:"column:expires_at;not null" json:"expiresAt"`
+	DeviceInfo    string     `gorm:"column:device_info;size:256" json:"deviceInfo"`
+	LastRefreshAt *time.Time `gorm:"column:last_refresh_at" json:"lastRefreshAt"`
+}
+
+func (OAuthSession) TableName() string { return "t_oauth_session" }

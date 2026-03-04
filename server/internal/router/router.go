@@ -61,16 +61,20 @@ func Setup(db *gorm.DB) *gin.Engine {
 	systemH := handler.NewSystemHandlerWithUser(systemSvc, userSvc)
 	fileH := handler.NewFileHandler(fileSvc)
 	templateH := handler.NewTemplateHandler(templateSvc)
+	oauthH := handler.NewOAuthHandler(db)
 
 	// --- Route groups ---
 	// Public routes (no auth)
 	public := r.Group("/api/public")
 	captcha := r.Group("/captcha")
 
+	// OAuth routes (public)
+	oauthH.RegisterRoutes(r.Group("/api"))
+
 	// Protected API routes
 	api := r.Group("/api")
 
-	// User routes (public + captcha + protected + root)
+	// User routes (protected + captcha + root)
 	userGrp := api.Group("/user")
 	userH.RegisterRoutes(public, captcha, userGrp, api)
 

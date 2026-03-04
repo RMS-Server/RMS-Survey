@@ -14,6 +14,7 @@ type Config struct {
 	AI       AIConfig       `mapstructure:"ai"`
 	Captcha  CaptchaConfig  `mapstructure:"captcha"`
 	Upload   UploadConfig   `mapstructure:"upload"`
+	OAuth    OAuthConfig    `mapstructure:"oauth"`
 }
 
 type ServerConfig struct {
@@ -48,6 +49,17 @@ type CaptchaConfig struct {
 type UploadConfig struct {
 	MaxSize      int64    `mapstructure:"max_size"`
 	AllowedTypes []string `mapstructure:"allowed_types"`
+}
+
+type OAuthConfig struct {
+	Enabled            bool   `mapstructure:"enabled"`
+	ClientID           string `mapstructure:"client_id"`
+	AuthURL            string `mapstructure:"auth_url"`
+	TokenURL           string `mapstructure:"token_url"`
+	UserInfoURL        string `mapstructure:"userinfo_url"`
+	RedirectURL        string `mapstructure:"redirect_url"`
+	Scopes             string `mapstructure:"scopes"`
+	MinPermissionLevel int    `mapstructure:"min_permission_level"`
 }
 
 var C Config
