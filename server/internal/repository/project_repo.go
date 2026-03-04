@@ -211,3 +211,27 @@ func (r *ProjectRepo) IsProjectOwner(projectID string, userInfo *dto.UserInfo) (
 	}
 	return project.CreateBy == userInfo.UserID, nil
 }
+
+// GetAccessibleProjectIDs returns the list of project IDs the user can access.
+func (r *ProjectRepo) GetAccessibleProjectIDs(userInfo *dto.UserInfo) ([]string, error) {
+	// Admin sees all projects
+	if isAdmin(userInfo) {
+		var ids []string
+		if err := r.db.Model(&model.Project{}).Pluck("id", &ids).Error; err != nil {
+			return nil, err
+		}
+		return ids, nil
+	}
+
+	// User sees projects they created or are a partner of
+	var ids []string
+	query := `
+		SELECT id FROM t_project WHERE create_by = ?
+		UNION
+		SELECT project_id FROM t_project_partner WHERE user_id = ?
+	`
+	if err := r.db.Raw(query, userInfo.UserID, userInfo.UserID).Scan(&ids).Error; err != nil {
+		return nil, err
+	}
+	return ids, nil
+}

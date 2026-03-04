@@ -45,7 +45,7 @@ func (s *SurveyService) LoadProject(req *dto.SurveyLoadRequest) (*dto.SurveyView
 // SaveAnswer submits a public answer.
 func (s *SurveyService) SaveAnswer(req *dto.AnswerRequest) (*dto.PublicAnswerView, error) {
 	svc := NewAnswerService(s.answerRepo, s.projectRepo)
-	if err := svc.CreateAnswer(req, &dto.UserInfo{}); err != nil {
+	if err := svc.CreatePublicAnswer(req); err != nil {
 		return nil, err
 	}
 	// Return setting from project so frontend can show end page
@@ -64,7 +64,7 @@ func (s *SurveyService) TempSaveAnswer(req *dto.AnswerRequest) error {
 	tempSave := 1
 	req.TempSave = &tempSave
 	svc := NewAnswerService(s.answerRepo, s.projectRepo)
-	return svc.CreateAnswer(req, &dto.UserInfo{})
+	return svc.CreatePublicAnswer(req)
 }
 
 // GetSetting returns the survey setting for a project.

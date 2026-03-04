@@ -61,14 +61,30 @@ func NewAnswerService(repo *repository.AnswerRepo, projectRepo *repository.Proje
 }
 
 // ListAnswers returns a paginated list of answers.
+// If projectId is specified, checks access and returns answers for that project.
+// If projectId is not specified, returns answers from all accessible projects.
 func (s *AnswerService) ListAnswers(query *dto.AnswerQuery, userInfo *dto.UserInfo) (*dto.PageResponse[dto.AnswerView], error) {
-	if query.ProjectID == "" {
-		return nil, errors.New("projectId is required")
+	var projectIDs []string
+
+	if query.ProjectID != "" {
+		// Specific project: check access
+		if _, err := s.projectRepo.HasProjectAccess(query.ProjectID, userInfo); err != nil {
+			return nil, err
+		}
+	} else {
+		// No specific project: get all accessible projects
+		var err error
+		projectIDs, err = s.projectRepo.GetAccessibleProjectIDs(userInfo)
+		if err != nil {
+			return nil, err
+		}
+		if len(projectIDs) == 0 {
+			// No accessible projects, return empty result
+			return &dto.PageResponse[dto.AnswerView]{List: []dto.AnswerView{}, Total: 0}, nil
+		}
 	}
-	if _, err := s.projectRepo.HasProjectAccess(query.ProjectID, userInfo); err != nil {
-		return nil, err
-	}
-	answers, total, err := s.repo.ListAnswers(query)
+
+	answers, total, err := s.repo.ListAnswers(query, projectIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -80,14 +96,27 @@ func (s *AnswerService) ListAnswers(query *dto.AnswerQuery, userInfo *dto.UserIn
 }
 
 // ListDeleted returns soft-deleted answers.
+// If projectId is specified, checks access and returns deleted answers for that project.
+// If projectId is not specified, returns deleted answers from all accessible projects.
 func (s *AnswerService) ListDeleted(query *dto.AnswerQuery, userInfo *dto.UserInfo) ([]dto.AnswerView, error) {
-	if query.ProjectID == "" {
-		return nil, errors.New("projectId is required")
+	var projectIDs []string
+
+	if query.ProjectID != "" {
+		if _, err := s.projectRepo.HasProjectAccess(query.ProjectID, userInfo); err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+		projectIDs, err = s.projectRepo.GetAccessibleProjectIDs(userInfo)
+		if err != nil {
+			return nil, err
+		}
+		if len(projectIDs) == 0 {
+			return []dto.AnswerView{}, nil
+		}
 	}
-	if _, err := s.projectRepo.HasProjectAccess(query.ProjectID, userInfo); err != nil {
-		return nil, err
-	}
-	answers, err := s.repo.ListDeleted(query)
+
+	answers, err := s.repo.ListDeleted(query, projectIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +145,20 @@ func (s *AnswerService) CreateAnswer(req *dto.AnswerRequest, userInfo *dto.UserI
 	if _, err := s.projectRepo.HasProjectAccess(req.ProjectID, userInfo); err != nil {
 		return err
 	}
+	return s.doCreateAnswer(req, userInfo)
+}
+
+// CreatePublicAnswer inserts a new answer for public survey submission (no access check).
+func (s *AnswerService) CreatePublicAnswer(req *dto.AnswerRequest) error {
+	// Only verify project exists, no access control for anonymous users
+	if _, err := s.projectRepo.GetProject(req.ProjectID); err != nil {
+		return err
+	}
+	return s.doCreateAnswer(req, &dto.UserInfo{})
+}
+
+// doCreateAnswer performs the actual answer creation.
+func (s *AnswerService) doCreateAnswer(req *dto.AnswerRequest, userInfo *dto.UserInfo) error {
 	id, err := nanoid.New()
 	if err != nil {
 		return fmt.Errorf("generate id: %w", err)

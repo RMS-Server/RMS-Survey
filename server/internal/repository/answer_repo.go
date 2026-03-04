@@ -17,11 +17,14 @@ func NewAnswerRepo(db *gorm.DB) *AnswerRepo {
 }
 
 // ListAnswers returns a paginated list of non-deleted answers.
-func (r *AnswerRepo) ListAnswers(query *dto.AnswerQuery) ([]model.Answer, int64, error) {
+// If projectIDs is provided, filters by those projects.
+func (r *AnswerRepo) ListAnswers(query *dto.AnswerQuery, projectIDs []string) ([]model.Answer, int64, error) {
 	db := r.db.Model(&model.Answer{})
 
 	if query.ProjectID != "" {
 		db = db.Where("project_id = ?", query.ProjectID)
+	} else if len(projectIDs) > 0 {
+		db = db.Where("project_id IN ?", projectIDs)
 	}
 	if query.TempSave != nil {
 		db = db.Where("temp_save = ?", *query.TempSave)
@@ -50,11 +53,14 @@ func (r *AnswerRepo) ListAnswers(query *dto.AnswerQuery) ([]model.Answer, int64,
 	return answers, total, err
 }
 
-// ListDeleted returns soft-deleted answers for a project.
-func (r *AnswerRepo) ListDeleted(query *dto.AnswerQuery) ([]model.Answer, error) {
+// ListDeleted returns soft-deleted answers.
+// If projectIDs is provided, filters by those projects.
+func (r *AnswerRepo) ListDeleted(query *dto.AnswerQuery, projectIDs []string) ([]model.Answer, error) {
 	db := r.db.Unscoped().Model(&model.Answer{}).Where("deleted_at IS NOT NULL")
 	if query.ProjectID != "" {
 		db = db.Where("project_id = ?", query.ProjectID)
+	} else if len(projectIDs) > 0 {
+		db = db.Where("project_id IN ?", projectIDs)
 	}
 	var answers []model.Answer
 	err := db.Find(&answers).Error
