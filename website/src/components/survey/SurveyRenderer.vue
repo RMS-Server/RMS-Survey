@@ -7,7 +7,7 @@
         <div v-if="isQuestionVisible(element.id)" class="question-item">
         <div class="question-title">
           <span class="question-number">{{ pageIndex + 1 }}.{{ elementIndex + 1 }}</span>
-          {{ element.title }}
+          <span v-if="element.type !== 'cloze'">{{ element.title }}</span>
           <span v-if="element.required" class="required-mark">*</span>
         </div>
 
@@ -67,6 +67,12 @@
             :value="internalAnswers[element.id]?.value as number"
             @update:value="updateAnswer(element.id, $event)"
           />
+          <ClozeElement
+            v-else-if="element.type === 'cloze'"
+            :element="element"
+            :value="(internalAnswers[element.id]?.value as Record<string, string>) || {}"
+            @update:value="updateAnswer(element.id, $event)"
+          />
         </div>
 
         <!-- Attachment upload area -->
@@ -100,6 +106,7 @@ import CheckboxElement from './elements/CheckboxElement.vue'
 import FillBlankElement from './elements/FillBlankElement.vue'
 import DropdownElement from './elements/DropdownElement.vue'
 import RatingElement from './elements/RatingElement.vue'
+import ClozeElement from './elements/ClozeElement.vue'
 import AttachmentUpload from './AttachmentUpload.vue'
 
 const props = defineProps<{
@@ -145,7 +152,7 @@ watch(() => props.answers, (val) => {
     if (typeof value === 'object' && value !== null && 'value' in value) {
       converted[key] = value as AnswerValue
     } else {
-      converted[key] = { value: value as string | string[] | number | null, attachments: [] }
+      converted[key] = { value: value as string | string[] | number | Record<string, string> | null, attachments: [] }
     }
   }
   internalAnswers.value = converted
@@ -153,7 +160,7 @@ watch(() => props.answers, (val) => {
 }, { immediate: true })
 
 // Emit updates when internal answers change
-function updateAnswer(questionId: string, value: string | string[] | number | null) {
+function updateAnswer(questionId: string, value: string | string[] | number | Record<string, string> | null) {
   if (!internalAnswers.value[questionId]) {
     internalAnswers.value[questionId] = { value, attachments: [] }
   } else {

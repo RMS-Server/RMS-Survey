@@ -133,8 +133,20 @@ async function handleSubmit(submittedAnswers: Record<string, AnswerValue>) {
           if (el.required) {
             const answer = submittedAnswers[el.id]
             const value = answer?.value
-            if (value === '' || value === undefined || value === null ||
-                (Array.isArray(value) && value.length === 0)) {
+            let isEmpty = false
+
+            if (value === '' || value === undefined || value === null) {
+              isEmpty = true
+            } else if (Array.isArray(value) && value.length === 0) {
+              isEmpty = true
+            } else if (el.type === 'cloze' && typeof value === 'object') {
+              // For cloze questions, check if all blanks are filled
+              const clozeValue = value as Record<string, string>
+              const blanks = el.blanks || []
+              isEmpty = blanks.some(blank => !clozeValue[blank.id]?.trim())
+            }
+
+            if (isEmpty) {
               message.warning(`请回答: ${el.title || `题目 ${el.id}`}`)
               return
             }

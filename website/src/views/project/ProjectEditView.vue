@@ -98,6 +98,8 @@
                 <component
                   :is="getEditorComponent(element.type)"
                   v-model:options="element.options"
+                  :element="element"
+                  @update:element="updateElement(index, $event)"
                 />
               </div>
               <div class="question-footer">
@@ -294,11 +296,13 @@ import {
   DownCircleOutlined,
   StarOutlined,
   BranchesOutlined,
-  SettingOutlined
+  SettingOutlined,
+  EditOutlined
 } from '@ant-design/icons-vue'
 import SurveyRenderer from '@/components/survey/SurveyRenderer.vue'
 import LogicRuleEditor from '@/components/survey/LogicRuleEditor.vue'
 import OptionsEditor from '@/components/survey/OptionsEditor.vue'
+import ClozeEditor from '@/components/survey/ClozeEditor.vue'
 import QuestionAttachmentUpload from '@/components/survey/QuestionAttachmentUpload.vue'
 import SurveySettingEditor from '@/components/survey/SurveySettingEditor.vue'
 import type { SurveyElement, SurveySchema, QuestionAttachment, SurveyLogic, SurveySetting } from '@/types/survey'
@@ -403,6 +407,8 @@ const previewAnswers = computed(() => {
   elements.value.forEach(el => {
     if (el.type === 'checkbox') {
       answers[el.id] = []
+    } else if (el.type === 'cloze') {
+      answers[el.id] = {}
     } else {
       answers[el.id] = ''
     }
@@ -413,7 +419,8 @@ const previewAnswers = computed(() => {
 const questionTypes = [
   { value: 'radio', label: '单选题', icon: CheckSquareOutlined },
   { value: 'checkbox', label: '多选题', icon: BorderOutlined },
-  { value: 'fillBlank', label: '填空题', icon: FormOutlined },
+  { value: 'fillBlank', label: '简答题', icon: FormOutlined },
+  { value: 'cloze', label: '填空题', icon: EditOutlined },
   { value: 'dropdown', label: '下拉题', icon: DownCircleOutlined },
   { value: 'rating', label: '评分题', icon: StarOutlined }
 ]
@@ -421,7 +428,8 @@ const questionTypes = [
 const editorComponents: Record<string, any> = {
   radio: OptionsEditor,
   checkbox: OptionsEditor,
-  dropdown: OptionsEditor
+  dropdown: OptionsEditor,
+  cloze: ClozeEditor
 }
 
 function getEditorComponent(type: string) {
@@ -444,10 +452,17 @@ function addQuestion(type: string) {
       : undefined,
     min: type === 'rating' ? 1 : undefined,
     max: type === 'rating' ? 5 : undefined,
+    blanks: type === 'cloze' ? [] : undefined,
     attachment: { enabled: false, maxFiles: 1, maxSize: 10485760, allowedTypes: ['.pdf', '.doc', '.docx', '.jpg', '.png'] }
   }
   elements.value.push(element)
   selectedIndex.value = elements.value.length - 1
+}
+
+function updateElement(index: number, updatedElement: SurveyElement) {
+  if (index >= 0 && index < elements.value.length) {
+    elements.value[index] = updatedElement
+  }
 }
 
 function selectQuestion(index: number) {

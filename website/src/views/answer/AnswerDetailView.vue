@@ -227,7 +227,15 @@ function formatValue(value: unknown): string {
     return formatValue(answerVal.value)
   }
   if (Array.isArray(value)) return value.join(', ')
-  if (typeof value === 'object') return JSON.stringify(value, null, 2)
+  if (typeof value === 'object') {
+    // For cloze answers (Record<string, string>), format nicely
+    const obj = value as Record<string, string>
+    const values = Object.values(obj)
+    if (values.length > 0 && typeof values[0] === 'string') {
+      return values.join(' / ')
+    }
+    return JSON.stringify(value, null, 2)
+  }
   return String(value)
 }
 

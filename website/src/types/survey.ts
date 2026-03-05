@@ -31,9 +31,16 @@ export interface SurveyPage {
   elements: SurveyElement[]
 }
 
+// Cloze blank definition
+export interface ClozeBlank {
+  id: string
+  placeholder?: string
+  maxLength?: number
+}
+
 export interface SurveyElement {
   id: string
-  type: 'radio' | 'checkbox' | 'fillBlank' | 'dropdown' | 'rating'
+  type: 'radio' | 'checkbox' | 'fillBlank' | 'dropdown' | 'rating' | 'cloze'
   title: string
   required: boolean
   options?: SurveyOption[]
@@ -44,6 +51,7 @@ export interface SurveyElement {
   max?: number
   attachment?: AttachmentConfig
   questionAttachments?: QuestionAttachment[]  // Files uploaded by creator for display
+  blanks?: ClozeBlank[]  // For cloze type: blank definitions
 }
 
 export interface SurveyOption {
@@ -77,7 +85,7 @@ export interface QuestionAttachment {
 
 // Answer value structure supporting nested attachments
 export interface AnswerValue {
-  value: string | string[] | number | null
+  value: string | string[] | number | Record<string, string> | null
   attachments?: AttachmentInfo[]
 }
 
