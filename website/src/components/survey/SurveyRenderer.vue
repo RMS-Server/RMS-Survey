@@ -218,6 +218,9 @@ function handleTempSave() {
   padding: 16px;
   border: 1px solid var(--border-glass);
   box-shadow: var(--shadow-raised);
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 @media (min-width: 768px) {
@@ -259,6 +262,9 @@ function handleTempSave() {
   border-radius: var(--radius-md);
   border: 1px solid var(--border-glass);
   box-shadow: var(--shadow-inset);
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 @media (min-width: 768px) {
@@ -274,6 +280,9 @@ function handleTempSave() {
   margin-bottom: 12px;
   color: var(--color-text-main);
   line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 @media (min-width: 768px) {
@@ -326,6 +335,14 @@ function handleTempSave() {
 
 .question-content {
   margin-top: 8px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.question-content :deep(.ant-radio-wrapper),
+.question-content :deep(.ant-checkbox-wrapper) {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .question-attachment {

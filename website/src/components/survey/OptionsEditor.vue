@@ -1,9 +1,10 @@
 <template>
   <div class="options-editor">
     <div v-for="(option, index) in localOptions" :key="option.id" class="option-item">
-      <a-input
+      <a-textarea
         v-model:value="option.text"
         :placeholder="`选项 ${index + 1}`"
+        :auto-size="{ minRows: 1, maxRows: 4 }"
         @change="handleUpdate"
       />
       <a-button

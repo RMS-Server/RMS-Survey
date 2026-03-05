@@ -359,6 +359,8 @@ const hasTimingInfo = computed(() => {
   flex: 1;
   color: var(--color-text-main);
   word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .attachment-list {

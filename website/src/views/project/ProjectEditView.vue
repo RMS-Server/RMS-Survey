@@ -89,9 +89,10 @@
                 </div>
               </div>
               <div class="question-content">
-                <a-input
+                <a-textarea
                   v-model:value="element.title"
                   placeholder="题目内容"
+                  :auto-size="{ minRows: 1, maxRows: 6 }"
                   @click.stop
                 />
                 <component
@@ -120,7 +121,7 @@
         <h4>题目设置</h4>
         <a-form layout="vertical">
           <a-form-item label="标题">
-            <a-input v-model:value="selectedElement.title" />
+            <a-textarea v-model:value="selectedElement.title" :auto-size="{ minRows: 1, maxRows: 6 }" />
           </a-form-item>
           <a-form-item label="必填">
             <a-switch v-model:checked="selectedElement.required" />
@@ -180,7 +181,7 @@
       <div v-if="selectedElement" class="mobile-settings-content">
         <a-form layout="vertical">
           <a-form-item label="标题">
-            <a-input v-model:value="selectedElement.title" />
+            <a-textarea v-model:value="selectedElement.title" :auto-size="{ minRows: 1, maxRows: 6 }" />
           </a-form-item>
           <a-form-item label="必填">
             <a-switch v-model:checked="selectedElement.required" />

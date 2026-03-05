@@ -40,4 +40,18 @@ function handleChange() {
   flex-direction: column;
   gap: 8px;
 }
+
+.ant-checkbox-group :deep(.ant-checkbox-wrapper) {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.ant-checkbox-group :deep(.ant-checkbox) {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
 </style>

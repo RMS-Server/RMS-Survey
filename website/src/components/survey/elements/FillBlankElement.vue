@@ -1,19 +1,10 @@
 <template>
   <a-textarea
-    v-if="isLongText"
     v-model:value="localValue"
     :placeholder="element.placeholder || '请输入您的答案'"
     :minlength="element.minLength"
     :maxlength="element.maxLength"
-    :rows="4"
-    @change="handleChange"
-  />
-  <a-input
-    v-else
-    v-model:value="localValue"
-    :placeholder="element.placeholder || '请输入您的答案'"
-    :minlength="element.minLength"
-    :maxlength="element.maxLength"
+    :auto-size="{ minRows: 1, maxRows: 6 }"
     @change="handleChange"
   />
   <div v-if="element.maxLength" class="char-count">
@@ -22,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, defineProps, defineEmits } from 'vue'
+import { ref, watch, defineProps, defineEmits } from 'vue'
 import type { SurveyElement } from '@/types/survey'
 
 const props = defineProps<{
@@ -36,8 +27,6 @@ const emit = defineEmits<{
 
 const localValue = ref(props.value || '')
 
-const isLongText = computed(() => (element.maxLength || 0) > 200)
-
 watch(() => props.value, (val) => {
   localValue.value = val || ''
 })
@@ -45,8 +34,6 @@ watch(() => props.value, (val) => {
 function handleChange() {
   emit('update:value', localValue.value)
 }
-
-const { element } = props
 </script>
 
 <style scoped>

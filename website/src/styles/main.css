@@ -670,10 +670,19 @@ body::before {
   border: 1px solid var(--border-glass) !important;
   border-radius: var(--radius-sm) !important;
   box-shadow: var(--shadow-inset);
+  resize: vertical;
 }
 
 .ant-input-textarea textarea:focus {
   background: var(--surface-glass-input-focus) !important;
   border-color: var(--color-primary) !important;
   box-shadow: var(--shadow-floating), 0 0 0 2px rgba(252, 121, 97, 0.2) !important;
+}
+
+/* Global word break for text content */
+.ant-input,
+.ant-textarea,
+.ant-input-textarea textarea {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
