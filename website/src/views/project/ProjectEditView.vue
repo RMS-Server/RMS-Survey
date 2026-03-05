@@ -4,35 +4,35 @@
       <div class="header-left">
         <a-button @click="handleBack">
           <template #icon><ArrowLeftOutlined /></template>
-          返回
+          <span class="btn-text">返回</span>
         </a-button>
         <a-input
           v-model:value="projectName"
           placeholder="问卷名称"
-          style="width: 300px; margin-left: 16px"
+          class="project-name-input"
         />
       </div>
       <div class="header-right">
         <a-button @click="settingModalVisible = true">
           <template #icon><SettingOutlined /></template>
-          设置
+          <span class="btn-text">设置</span>
         </a-button>
         <a-button @click="logicModalVisible = true">
           <template #icon><BranchesOutlined /></template>
-          逻辑跳转
+          <span class="btn-text">逻辑</span>
           <a-badge v-if="surveyLogic.rules.length > 0" :count="surveyLogic.rules.length" :offset="[5, -5]" />
         </a-button>
         <a-button @click="handlePreview">
           <template #icon><EyeOutlined /></template>
-          预览
+          <span class="btn-text">预览</span>
         </a-button>
         <a-button type="primary" :loading="saving" @click="handleSave">
           <template #icon><SaveOutlined /></template>
-          保存
+          <span class="btn-text">保存</span>
         </a-button>
         <a-button type="primary" :loading="publishing" @click="handlePublish">
           <template #icon><SendOutlined /></template>
-          发布
+          <span class="btn-text">发布</span>
         </a-button>
       </div>
     </div>
@@ -101,12 +101,21 @@
               </div>
               <div class="question-footer">
                 <a-checkbox v-model:checked="element.required">必填</a-checkbox>
+                <a-button
+                  type="link"
+                  size="small"
+                  class="settings-toggle-btn"
+                  @click.stop="showMobileSettings(index)"
+                >
+                  更多设置
+                </a-button>
               </div>
             </div>
           </template>
         </draggable>
       </div>
 
+      <!-- Desktop Settings Panel -->
       <div v-if="selectedElement" class="settings-panel">
         <h4>题目设置</h4>
         <a-form layout="vertical">
@@ -159,6 +168,66 @@
         </a-form>
       </div>
     </div>
+
+    <!-- Mobile Settings Drawer -->
+    <a-drawer
+      v-model:open="mobileSettingsVisible"
+      title="题目设置"
+      placement="bottom"
+      :height="'70%'"
+      class="mobile-settings-drawer"
+    >
+      <div v-if="selectedElement" class="mobile-settings-content">
+        <a-form layout="vertical">
+          <a-form-item label="标题">
+            <a-input v-model:value="selectedElement.title" />
+          </a-form-item>
+          <a-form-item label="必填">
+            <a-switch v-model:checked="selectedElement.required" />
+          </a-form-item>
+          <template v-if="selectedElement.type === 'fillBlank'">
+            <a-form-item label="最小长度">
+              <a-input-number v-model:value="selectedElement.minLength" :min="0" style="width: 100%" />
+            </a-form-item>
+            <a-form-item label="最大长度">
+              <a-input-number v-model:value="selectedElement.maxLength" :min="1" style="width: 100%" />
+            </a-form-item>
+          </template>
+          <template v-if="selectedElement.type === 'rating'">
+            <a-form-item label="最小值">
+              <a-input-number v-model:value="selectedElement.min" :min="1" style="width: 100%" />
+            </a-form-item>
+            <a-form-item label="最大值">
+              <a-input-number v-model:value="selectedElement.max" :min="2" style="width: 100%" />
+            </a-form-item>
+          </template>
+          <!-- 题目附件（答题者可见） -->
+          <a-divider>题目附件</a-divider>
+          <QuestionAttachmentUpload v-model="questionAttachments" />
+          <!-- 答题附件设置 -->
+          <a-divider>答题附件</a-divider>
+          <a-form-item label="允许上传附件">
+            <a-switch v-model:checked="attachmentEnabled" />
+          </a-form-item>
+          <template v-if="attachmentEnabled">
+            <a-form-item label="最大文件数">
+              <a-input-number v-model:value="attachmentMaxFiles" :min="1" :max="10" style="width: 100%" />
+            </a-form-item>
+            <a-form-item label="最大文件大小 (MB)">
+              <a-input-number v-model:value="attachmentMaxSizeMB" :min="1" :max="50" style="width: 100%" />
+            </a-form-item>
+            <a-form-item label="允许的文件类型">
+              <a-select
+                v-model:value="attachmentTypes"
+                mode="tags"
+                placeholder="输入或选择文件类型，如 .pdf, .custom"
+                :options="fileTypeOptions"
+              />
+            </a-form-item>
+          </template>
+        </a-form>
+      </div>
+    </a-drawer>
 
     <!-- 逻辑跳转模态框 -->
     <a-modal
@@ -250,6 +319,7 @@ const publishing = ref(false)
 const previewVisible = ref(false)
 const logicModalVisible = ref(false)
 const settingModalVisible = ref(false)
+const mobileSettingsVisible = ref(false)
 
 const selectedElement = computed(() => {
   if (selectedIndex.value >= 0 && selectedIndex.value < elements.value.length) {
@@ -381,6 +451,11 @@ function addQuestion(type: string) {
 
 function selectQuestion(index: number) {
   selectedIndex.value = index
+}
+
+function showMobileSettings(index: number) {
+  selectedIndex.value = index
+  mobileSettingsVisible.value = true
 }
 
 function removeQuestion(index: number) {
@@ -562,51 +637,127 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
+  padding: 12px 16px;
   background: var(--surface-glass);
   backdrop-filter: blur(var(--blur-strength));
   -webkit-backdrop-filter: blur(var(--blur-strength));
   border-bottom: 1px solid var(--border-glass);
   box-shadow: var(--shadow-inset);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (min-width: 768px) {
+  .edit-header {
+    padding: 12px 24px;
+    flex-wrap: nowrap;
+  }
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.project-name-input {
+  width: 100%;
+  max-width: 200px;
+}
+
+@media (min-width: 576px) {
+  .project-name-input {
+    width: 300px;
+    max-width: none;
+  }
 }
 
 .header-right {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 767px) {
+  .header-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* Hide button text on small screens */
+@media (max-width: 575px) {
+  .btn-text {
+    display: none;
+  }
 }
 
 .edit-body {
   flex: 1;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
+@media (min-width: 992px) {
+  .edit-body {
+    flex-direction: row;
+  }
+}
+
 .toolbar {
-  width: 200px;
+  width: 100%;
   background: var(--surface-glass);
   backdrop-filter: blur(var(--blur-strength));
   -webkit-backdrop-filter: blur(var(--blur-strength));
-  border-right: 1px solid var(--border-glass);
+  border-right: none;
+  border-bottom: 1px solid var(--border-glass);
   box-shadow: var(--shadow-inset);
-  padding: 16px;
+  padding: 12px 16px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 992px) {
+  .toolbar {
+    width: 200px;
+    padding: 16px;
+    border-right: 1px solid var(--border-glass);
+    border-bottom: none;
+  }
 }
 
 .toolbar h4 {
-  margin-bottom: 12px;
-  color: var(--color-text-main);
+  display: none;
+}
+
+@media (min-width: 992px) {
+  .toolbar h4 {
+    display: block;
+    margin-bottom: 12px;
+    color: var(--color-text-main);
+  }
 }
 
 .question-types {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+@media (min-width: 992px) {
+  .question-types {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
 }
 
 .question-type-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   background: var(--surface-glass-input);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-sm);
@@ -614,6 +765,25 @@ onMounted(async () => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--color-text-main);
   box-shadow: var(--shadow-inset);
+  flex: 1;
+  min-width: calc(50% - 4px);
+  font-size: 13px;
+}
+
+@media (min-width: 576px) {
+  .question-type-item {
+    min-width: auto;
+    flex: 0 0 auto;
+  }
+}
+
+@media (min-width: 992px) {
+  .question-type-item {
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
 }
 
 .question-type-item:hover {
@@ -625,9 +795,15 @@ onMounted(async () => {
 
 .canvas {
   flex: 1;
-  padding: 24px;
+  padding: 16px;
   overflow-y: auto;
   background: transparent;
+}
+
+@media (min-width: 768px) {
+  .canvas {
+    padding: 24px;
+  }
 }
 
 .empty-canvas {
@@ -639,8 +815,14 @@ onMounted(async () => {
 }
 
 .question-list {
-  max-width: 800px;
+  max-width: 100%;
   margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .question-list {
+    max-width: 800px;
+  }
 }
 
 .question-item {
@@ -649,11 +831,18 @@ onMounted(async () => {
   -webkit-backdrop-filter: blur(var(--blur-strength));
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
-  padding: 16px;
-  margin-bottom: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-raised);
+}
+
+@media (min-width: 768px) {
+  .question-item {
+    padding: 16px;
+    margin-bottom: 12px;
+  }
 }
 
 .question-item:hover {
@@ -672,6 +861,7 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .drag-handle {
@@ -694,9 +884,18 @@ onMounted(async () => {
 }
 
 .question-actions {
-  margin-left: auto;
   display: flex;
   gap: 4px;
+  margin-left: auto;
+}
+
+@media (max-width: 575px) {
+  .question-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 8px;
+    margin-left: 0;
+  }
 }
 
 .question-content {
@@ -705,7 +904,18 @@ onMounted(async () => {
 
 .question-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-toggle-btn {
+  display: inline-flex;
+}
+
+@media (min-width: 992px) {
+  .settings-toggle-btn {
+    display: none;
+  }
 }
 
 .settings-panel {
@@ -717,10 +927,33 @@ onMounted(async () => {
   box-shadow: var(--shadow-inset);
   padding: 16px;
   overflow-y: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 991px) {
+  .settings-panel {
+    display: none;
+  }
 }
 
 .settings-panel h4 {
   margin-bottom: 16px;
   color: var(--color-text-main);
+}
+
+/* Mobile settings drawer */
+.mobile-settings-content {
+  padding: 0 4px;
+}
+
+:deep(.mobile-settings-drawer .ant-drawer-content) {
+  background: var(--surface-glass-strong);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+}
+
+:deep(.mobile-settings-drawer .ant-drawer-header) {
+  background: transparent;
+  border-bottom: 1px solid var(--border-glass);
 }
 </style>

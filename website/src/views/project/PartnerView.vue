@@ -10,7 +10,7 @@
       </div>
     </div>
     <a-card :bordered="false">
-      <PartnerManager v-if="projectId" :project-id="projectId" />
+      <PartnerManager v-if="projectId" :project-id="projectId" :read-only="!isOwner" />
     </a-card>
   </div>
 </template>
@@ -29,6 +29,7 @@ const projectStore = useProjectStore()
 
 const projectId = computed(() => route.params.id as string)
 const projectName = ref('')
+const isOwner = ref(false)
 
 function handleBack() {
   router.push('/project')
@@ -43,6 +44,7 @@ onMounted(async () => {
   try {
     const project = await projectStore.fetchProject(projectId.value)
     projectName.value = project.name
+    isOwner.value = project.isOwner ?? false
   } catch {
     message.error('加载项目信息失败')
   }

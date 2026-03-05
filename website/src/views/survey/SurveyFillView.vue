@@ -189,20 +189,41 @@ async function handleTempSave(submittedAnswers: Record<string, AnswerValue>) {
 .survey-fill-container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 20px 16px;
   min-height: 100vh;
   background: transparent;
 }
 
+@media (min-width: 768px) {
+  .survey-fill-container {
+    padding: 40px 20px;
+  }
+}
+
 .survey-title {
   text-align: center;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   color: var(--color-text-main);
+  padding: 0 8px;
+}
+
+@media (min-width: 768px) {
+  .survey-title {
+    font-size: 24px;
+    margin-bottom: 32px;
+    padding: 0;
+  }
 }
 
 .error-state {
-  padding: 100px 0;
+  padding: 60px 0;
+}
+
+@media (min-width: 768px) {
+  .error-state {
+    padding: 100px 0;
+  }
 }
 </style>

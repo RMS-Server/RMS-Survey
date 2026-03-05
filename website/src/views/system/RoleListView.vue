@@ -9,14 +9,16 @@
     </div>
 
     <a-card :bordered="false">
-      <a-table
-        :columns="columns"
-        :data-source="roles"
-        :loading="loading"
-        :pagination="pagination"
-        row-key="id"
-        @change="handleTableChange"
-      >
+      <div class="table-responsive">
+        <a-table
+          :columns="columns"
+          :data-source="roles"
+          :loading="loading"
+          :pagination="pagination"
+          :scroll="{ x: 400 }"
+          row-key="id"
+          @change="handleTableChange"
+        >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
             <a-tag :color="record.status ? 'green' : 'red'">
@@ -40,6 +42,7 @@
           </template>
         </template>
       </a-table>
+      </div>
     </a-card>
 
     <a-modal
@@ -193,6 +196,8 @@ async function handleDelete(record: RoleView) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   background: var(--surface-glass);
   backdrop-filter: blur(var(--blur-strength));
   -webkit-backdrop-filter: blur(var(--blur-strength));
@@ -201,5 +206,39 @@ async function handleDelete(record: RoleView) {
   border-radius: var(--radius-md);
   border: 1px solid var(--border-glass);
   box-shadow: var(--shadow-raised);
+}
+
+@media (max-width: 767px) {
+  .page-header {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+}
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive :deep(.ant-table) {
+  min-width: 400px;
+}
+
+@media (max-width: 767px) {
+  .table-responsive :deep(.ant-table-thead > tr > th) {
+    padding: 12px 8px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .table-responsive :deep(.ant-table-tbody > tr > td) {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+
+  .table-responsive :deep(.ant-space) {
+    flex-wrap: wrap;
+    gap: 4px !important;
+  }
 }
 </style>

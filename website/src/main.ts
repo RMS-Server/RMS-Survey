@@ -9,6 +9,7 @@ import './styles/theme.css'
 import './styles/glassmorphism.css'
 import 'ant-design-vue/dist/reset.css'
 import './styles/main.css'
+import './styles/responsive.css'
 
 const app = createApp(App)
 const pinia = createPinia()

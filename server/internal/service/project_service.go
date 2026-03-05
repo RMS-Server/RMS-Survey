@@ -11,6 +11,19 @@ import (
 	"github.com/rms-survey/server/internal/repository"
 )
 
+// isAdmin checks if the user has admin role.
+func isAdmin(userInfo *dto.UserInfo) bool {
+	if userInfo == nil {
+		return false
+	}
+	for _, r := range userInfo.Roles {
+		if r == "admin" || r == "ADMIN" {
+			return true
+		}
+	}
+	return false
+}
+
 // ProjectService handles business logic for projects.
 type ProjectService struct {
 	repo *repository.ProjectRepo
@@ -29,7 +42,7 @@ func (s *ProjectService) ListProjects(query *dto.ProjectQuery, userInfo *dto.Use
 	}
 	views := make([]dto.ProjectView, 0, len(projects))
 	for _, p := range projects {
-		views = append(views, toProjectView(p))
+		views = append(views, toProjectView(p, userInfo))
 	}
 	return &dto.PageResponse[dto.ProjectView]{List: views, Total: total}, nil
 }
@@ -40,7 +53,7 @@ func (s *ProjectService) GetProject(id string, userInfo *dto.UserInfo) (*dto.Pro
 	if err != nil {
 		return nil, err
 	}
-	v := toProjectView(*p)
+	v := toProjectView(*p, userInfo)
 	return &v, nil
 }
 
@@ -83,7 +96,7 @@ func (s *ProjectService) CreateProject(req *dto.ProjectRequest, userInfo *dto.Us
 	if err := s.repo.CreateProject(p); err != nil {
 		return nil, err
 	}
-	v := toProjectView(*p)
+	v := toProjectView(*p, userInfo)
 	return &v, nil
 }
 
@@ -135,7 +148,7 @@ func (s *ProjectService) GetDeleted(userInfo *dto.UserInfo) ([]dto.ProjectView, 
 	}
 	views := make([]dto.ProjectView, 0, len(projects))
 	for _, p := range projects {
-		views = append(views, toProjectView(p))
+		views = append(views, toProjectView(p, userInfo))
 	}
 	return views, nil
 }
@@ -274,7 +287,8 @@ func (s *ProjectService) ListPartnersAll(projectID string, userInfo *dto.UserInf
 	return views, nil
 }
 
-func toProjectView(p model.Project) dto.ProjectView {
+func toProjectView(p model.Project, userInfo *dto.UserInfo) dto.ProjectView {
+	isOwner := userInfo != nil && (p.CreateBy == userInfo.UserID || isAdmin(userInfo))
 	return dto.ProjectView{
 		ID:        p.ID,
 		ParentID:  p.ParentID,
@@ -287,5 +301,6 @@ func toProjectView(p model.Project) dto.ProjectView {
 		CreateBy:  p.CreateBy,
 		CreatedAt: p.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: p.UpdatedAt.Format(time.RFC3339),
+		IsOwner:   isOwner,
 	}
 }

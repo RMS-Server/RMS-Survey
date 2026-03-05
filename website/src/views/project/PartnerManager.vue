@@ -10,11 +10,11 @@
           @search="loadPartners"
           allow-clear
         />
-        <a-button type="primary" @click="showAddModal = true">
+        <a-button v-if="!readOnly" type="primary" @click="showAddModal = true">
           <template #icon><PlusOutlined /></template>
           添加参与者
         </a-button>
-        <a-dropdown>
+        <a-dropdown v-if="!readOnly">
           <a-button>
             <template #icon><MoreOutlined /></template>
             更多
@@ -34,6 +34,10 @@
             </a-menu>
           </template>
         </a-dropdown>
+        <a-button v-else @click="handleExport">
+          <template #icon><DownloadOutlined /></template>
+          导出名单
+        </a-button>
       </div>
     </div>
 
@@ -42,7 +46,7 @@
       :data-source="partners"
       :loading="loading"
       :pagination="pagination"
-      :row-selection="{ selectedRowKeys, onChange: onSelectionChange }"
+      :row-selection="readOnly ? undefined : { selectedRowKeys, onChange: onSelectionChange }"
       row-key="id"
       @change="handleTableChange"
     >
@@ -157,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { message } from 'ant-design-vue'
 import type { UploadFile } from 'ant-design-vue'
 import {
@@ -173,6 +177,7 @@ import type { ProjectPartnerView, SelectUserView } from '@/types/project'
 
 const props = defineProps<{
   projectId: string
+  readOnly?: boolean
 }>()
 
 const loading = ref(false)
@@ -188,12 +193,17 @@ const pagination = reactive({
   showTotal: (total: number) => `共 ${total} 条`
 })
 
-const columns = [
-  { title: '姓名', dataIndex: 'userName', key: 'userName' },
-  { title: '类型', dataIndex: 'type', key: 'type' },
-  { title: '状态', dataIndex: 'status', key: 'status' },
-  { title: '操作', key: 'action', width: 100 }
-]
+const columns = computed(() => {
+  const baseColumns: Array<{ title: string; dataIndex?: string; key: string; width?: number }> = [
+    { title: '姓名', dataIndex: 'userName', key: 'userName' },
+    { title: '类型', dataIndex: 'type', key: 'type' },
+    { title: '状态', dataIndex: 'status', key: 'status' }
+  ]
+  if (!props.readOnly) {
+    baseColumns.push({ title: '操作', key: 'action', width: 100 })
+  }
+  return baseColumns
+})
 
 const statusColors: Record<number, string> = {
   0: 'default',

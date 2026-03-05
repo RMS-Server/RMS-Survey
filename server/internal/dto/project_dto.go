@@ -38,6 +38,7 @@ type ProjectView struct {
 	CreateBy  string          `json:"createBy"`
 	CreatedAt string          `json:"createAt"`
 	UpdatedAt string          `json:"updateAt"`
+	IsOwner   bool            `json:"isOwner"` // true if current user is the project owner
 }
 
 // ProjectPartnerQuery holds query parameters for listing project partners.

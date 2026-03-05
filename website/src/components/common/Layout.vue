@@ -1,6 +1,14 @@
 <template>
   <a-layout class="layout">
-    <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light" class="glass-sidebar">
+    <!-- Desktop Sider - visible on lg screens -->
+    <a-layout-sider
+      v-model:collapsed="collapsed"
+      collapsible
+      theme="light"
+      class="glass-sidebar desktop-sider"
+      breakpoint="lg"
+      :collapsed-width="80"
+    >
       <div class="logo">
         <span v-if="!collapsed">RMS Survey</span>
         <span v-else>RS</span>
@@ -45,8 +53,65 @@
         </a-sub-menu>
       </a-menu>
     </a-layout-sider>
+
+    <!-- Mobile Drawer Menu -->
+    <a-drawer
+      v-model:open="drawerVisible"
+      placement="left"
+      :closable="true"
+      :width="280"
+      class="mobile-drawer"
+      @close="drawerVisible = false"
+    >
+      <template #title>
+        <span class="drawer-logo">RMS Survey</span>
+      </template>
+      <a-menu
+        v-model:selectedKeys="selectedKeys"
+        mode="inline"
+        @click="handleMenuClick"
+      >
+        <a-menu-item key="project">
+          <template #icon>
+            <FileTextOutlined />
+          </template>
+          <span>问卷管理</span>
+        </a-menu-item>
+        <a-menu-item key="answer">
+          <template #icon>
+            <SolutionOutlined />
+          </template>
+          <span>答题管理</span>
+        </a-menu-item>
+        <a-menu-item key="template">
+          <template #icon>
+            <CopyOutlined />
+          </template>
+          <span>模板管理</span>
+        </a-menu-item>
+        <a-menu-item key="trash">
+          <template #icon>
+            <DeleteOutlined />
+          </template>
+          <span>回收站</span>
+        </a-menu-item>
+        <a-sub-menu key="system">
+          <template #icon>
+            <SettingOutlined />
+          </template>
+          <template #title>系统管理</template>
+          <a-menu-item key="system/user">用户管理</a-menu-item>
+          <a-menu-item key="system/role">角色管理</a-menu-item>
+        </a-sub-menu>
+      </a-menu>
+    </a-drawer>
+
     <a-layout>
       <a-layout-header class="header glass-header">
+        <!-- Mobile menu button -->
+        <button class="mobile-menu-btn" @click="drawerVisible = true">
+          <MenuOutlined />
+        </button>
         <div class="header-right">
           <a-dropdown>
             <span class="user-info">
@@ -82,7 +147,8 @@ import {
   UserOutlined,
   LogoutOutlined,
   CopyOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  MenuOutlined
 } from '@ant-design/icons-vue'
 
 const router = useRouter()
@@ -90,6 +156,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const collapsed = ref(false)
+const drawerVisible = ref(false)
 const selectedKeys = ref<string[]>(['project'])
 
 const currentRoute = computed(() => route.path)
@@ -112,6 +179,7 @@ watch(currentRoute, (path) => {
 
 function handleMenuClick({ key }: { key: string }) {
   router.push('/' + key)
+  drawerVisible.value = false // Close mobile drawer after navigation
 }
 
 function handleLogout() {
@@ -141,13 +209,14 @@ function handleLogout() {
   padding: 0 24px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   border-bottom: 1px solid var(--border-glass);
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  margin-left: auto;
 }
 
 .user-info {
@@ -166,5 +235,80 @@ function handleLogout() {
   margin: 0;
   overflow: auto;
   background: transparent;
+}
+
+/* Mobile menu button */
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-main);
+  font-size: 20px;
+  border-radius: var(--radius-sm);
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-btn:hover {
+  background: rgba(252, 121, 97, 0.1);
+  color: var(--color-primary);
+}
+
+@media (max-width: 991px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+}
+
+/* Drawer logo */
+.drawer-logo {
+  color: var(--color-primary);
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Mobile drawer styling */
+:deep(.mobile-drawer .ant-drawer-content) {
+  background: var(--surface-glass-strong);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+}
+
+:deep(.mobile-drawer .ant-drawer-header) {
+  background: transparent;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+:deep(.mobile-drawer .ant-menu) {
+  background: transparent;
+  border: none;
+}
+
+:deep(.mobile-drawer .ant-menu-item) {
+  color: var(--color-text-main);
+  margin: 4px 0;
+  border-radius: var(--radius-sm);
+}
+
+:deep(.mobile-drawer .ant-menu-item:hover) {
+  background: rgba(252, 121, 97, 0.1);
+  color: var(--color-primary);
+}
+
+:deep(.mobile-drawer .ant-menu-item-selected) {
+  background: rgba(252, 121, 97, 0.15);
+  color: var(--color-primary);
+}
+
+:deep(.mobile-drawer .ant-menu-submenu-title) {
+  color: var(--color-text-main);
+}
+
+:deep(.mobile-drawer .ant-menu-submenu-title:hover) {
+  color: var(--color-primary);
 }
 </style>

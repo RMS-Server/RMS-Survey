@@ -215,38 +215,71 @@ function handleTempSave() {
   backdrop-filter: blur(var(--blur-strength));
   -webkit-backdrop-filter: blur(var(--blur-strength));
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 16px;
   border: 1px solid var(--border-glass);
   box-shadow: var(--shadow-raised);
 }
 
+@media (min-width: 768px) {
+  .survey-renderer {
+    padding: 24px;
+  }
+}
+
 .survey-page {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 768px) {
+  .survey-page {
+    margin-bottom: 24px;
+  }
 }
 
 .page-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-glass);
   color: var(--color-text-main);
 }
 
+@media (min-width: 768px) {
+  .page-title {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+}
+
 .question-item {
-  margin-bottom: 24px;
-  padding: 16px;
+  margin-bottom: 16px;
+  padding: 12px;
   background: var(--surface-glass-input);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-glass);
   box-shadow: var(--shadow-inset);
 }
 
+@media (min-width: 768px) {
+  .question-item {
+    margin-bottom: 24px;
+    padding: 16px;
+  }
+}
+
 .question-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   margin-bottom: 12px;
   color: var(--color-text-main);
+  line-height: 1.5;
+}
+
+@media (min-width: 768px) {
+  .question-title {
+    font-size: 15px;
+  }
 }
 
 .question-number {
@@ -271,9 +304,16 @@ function handleTempSave() {
 }
 
 .attachment-image {
-  max-width: 300px;
-  max-height: 300px;
+  max-width: 100%;
+  max-height: 200px;
   border-radius: var(--radius-sm);
+}
+
+@media (min-width: 768px) {
+  .attachment-image {
+    max-width: 300px;
+    max-height: 300px;
+  }
 }
 
 .attachment-download-btn {
@@ -296,10 +336,30 @@ function handleTempSave() {
 
 .survey-actions {
   display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 32px;
-  padding-top: 24px;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
   border-top: 1px solid var(--border-glass);
+}
+
+@media (min-width: 576px) {
+  .survey-actions {
+    flex-direction: row;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 32px;
+    padding-top: 24px;
+  }
+}
+
+.survey-actions :deep(.ant-btn) {
+  min-height: 40px;
+}
+
+@media (max-width: 575px) {
+  .survey-actions :deep(.ant-btn) {
+    width: 100%;
+  }
 }
 </style>

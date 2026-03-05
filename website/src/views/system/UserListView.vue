@@ -13,19 +13,21 @@
         <a-input-search
           v-model:value="searchName"
           placeholder="按名称搜索"
-          style="width: 200px"
+          class="filter-search"
           @search="handleSearch"
         />
       </div>
 
-      <a-table
-        :columns="columns"
-        :data-source="users"
-        :loading="loading"
-        :pagination="pagination"
-        row-key="id"
-        @change="handleTableChange"
-      >
+      <div class="table-responsive">
+        <a-table
+          :columns="columns"
+          :data-source="users"
+          :loading="loading"
+          :pagination="pagination"
+          :scroll="{ x: 600 }"
+          row-key="id"
+          @change="handleTableChange"
+        >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
             <a-tag :color="record.status === 1 ? 'green' : 'red'">
@@ -54,6 +56,7 @@
           </template>
         </template>
       </a-table>
+      </div>
     </a-card>
 
     <a-modal
@@ -238,6 +241,8 @@ async function handleDelete(record: UserView) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   background: var(--surface-glass);
   backdrop-filter: blur(var(--blur-strength));
   -webkit-backdrop-filter: blur(var(--blur-strength));
@@ -248,7 +253,52 @@ async function handleDelete(record: UserView) {
   box-shadow: var(--shadow-raised);
 }
 
+@media (max-width: 767px) {
+  .page-header {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+}
+
 .filter-bar {
   margin-bottom: 16px;
+}
+
+.filter-search {
+  width: 100%;
+  max-width: 200px;
+}
+
+@media (max-width: 575px) {
+  .filter-search {
+    max-width: 100%;
+  }
+}
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive :deep(.ant-table) {
+  min-width: 600px;
+}
+
+@media (max-width: 767px) {
+  .table-responsive :deep(.ant-table-thead > tr > th) {
+    padding: 12px 8px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .table-responsive :deep(.ant-table-tbody > tr > td) {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+
+  .table-responsive :deep(.ant-space) {
+    flex-wrap: wrap;
+    gap: 4px !important;
+  }
 }
 </style>

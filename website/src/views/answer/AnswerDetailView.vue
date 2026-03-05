@@ -283,15 +283,32 @@ const hasTimingInfo = computed(() => {
   box-shadow: var(--shadow-raised);
 }
 
+@media (max-width: 767px) {
+  .page-header {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+}
+
 .header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 575px) {
+  .header-actions .ant-btn {
+    padding: 4px 8px;
+    font-size: 13px;
+  }
 }
 
 .answer-content {
@@ -301,10 +318,23 @@ const hasTimingInfo = computed(() => {
   border: 1px solid var(--border-glass);
 }
 
+@media (max-width: 767px) {
+  .answer-content {
+    padding: 12px;
+  }
+}
+
 .answer-item {
   display: flex;
+  flex-direction: column;
   padding: 12px 0;
   border-bottom: 1px solid var(--border-glass);
+}
+
+@media (min-width: 576px) {
+  .answer-item {
+    flex-direction: row;
+  }
 }
 
 .answer-item:last-child {
@@ -312,14 +342,23 @@ const hasTimingInfo = computed(() => {
 }
 
 .answer-label {
-  width: 200px;
   font-weight: 500;
   color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+@media (min-width: 576px) {
+  .answer-label {
+    width: 200px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+  }
 }
 
 .answer-value {
   flex: 1;
   color: var(--color-text-main);
+  word-break: break-word;
 }
 
 .attachment-list {
@@ -350,6 +389,7 @@ const hasTimingInfo = computed(() => {
   color: var(--color-primary);
   text-decoration: none;
   font-size: 13px;
+  word-break: break-all;
 }
 
 .attachment-link:hover {
@@ -376,5 +416,32 @@ const hasTimingInfo = computed(() => {
   margin-left: 8px;
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+/* Responsive descriptions */
+:deep(.ant-descriptions-bordered .ant-descriptions-item-label),
+:deep(.ant-descriptions-bordered .ant-descriptions-item-content) {
+  border-right: 1px solid var(--border-glass) !important;
+}
+
+@media (max-width: 575px) {
+  :deep(.ant-descriptions-bordered .ant-descriptions-row) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  :deep(.ant-descriptions-bordered .ant-descriptions-item-label),
+  :deep(.ant-descriptions-bordered .ant-descriptions-item-content) {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-glass);
+  }
+
+  :deep(.ant-descriptions-bordered .ant-descriptions-item-label) {
+    background: rgba(255, 255, 255, 0.15);
+    font-weight: 600;
+  }
 }
 </style>

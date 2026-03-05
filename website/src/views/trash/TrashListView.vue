@@ -7,14 +7,16 @@
     <a-card :bordered="false">
       <a-tabs v-model:activeKey="activeTab" @change="handleTabChange">
         <a-tab-pane key="projects" tab="问卷项目">
-          <a-table
-            :columns="projectColumns"
-            :data-source="projects"
-            :loading="projectLoading"
-            :pagination="projectPagination"
-            row-key="id"
-            @change="handleProjectTableChange"
-          >
+          <div class="table-responsive">
+            <a-table
+              :columns="projectColumns"
+              :data-source="projects"
+              :loading="projectLoading"
+              :pagination="projectPagination"
+              :scroll="{ x: 500 }"
+              row-key="id"
+              @change="handleProjectTableChange"
+            >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'createAt'">
                 {{ formatDate(record.createAt) }}
@@ -41,17 +43,20 @@
               </template>
             </template>
           </a-table>
+          </div>
         </a-tab-pane>
 
         <a-tab-pane key="answers" tab="答卷">
-          <a-table
-            :columns="answerColumns"
-            :data-source="answers"
-            :loading="answerLoading"
-            :pagination="answerPagination"
-            row-key="id"
-            @change="handleAnswerTableChange"
-          >
+          <div class="table-responsive">
+            <a-table
+              :columns="answerColumns"
+              :data-source="answers"
+              :loading="answerLoading"
+              :pagination="answerPagination"
+              :scroll="{ x: 500 }"
+              row-key="id"
+              @change="handleAnswerTableChange"
+            >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'createAt'">
                 {{ formatDate(record.createAt) }}
@@ -78,6 +83,7 @@
               </template>
             </template>
           </a-table>
+          </div>
         </a-tab-pane>
       </a-tabs>
     </a-card>
@@ -257,5 +263,39 @@ function formatDate(dateStr: string) {
   border-radius: var(--radius-md);
   border: 1px solid var(--border-glass);
   box-shadow: var(--shadow-raised);
+}
+
+@media (max-width: 767px) {
+  .page-header {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+}
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive :deep(.ant-table) {
+  min-width: 500px;
+}
+
+@media (max-width: 767px) {
+  .table-responsive :deep(.ant-table-thead > tr > th) {
+    padding: 12px 8px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .table-responsive :deep(.ant-table-tbody > tr > td) {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+
+  .table-responsive :deep(.ant-space) {
+    flex-wrap: wrap;
+    gap: 4px !important;
+  }
 }
 </style>

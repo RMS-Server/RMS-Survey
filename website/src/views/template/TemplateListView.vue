@@ -15,13 +15,13 @@
         <a-input-search
           v-model:value="searchName"
           placeholder="按名称搜索"
-          style="width: 200px"
+          class="filter-search"
           @search="handleSearch"
         />
         <a-select
           v-model:value="filterMode"
           placeholder="模式"
-          style="width: 120px"
+          class="filter-select-sm"
           allowClear
           @change="handleSearch"
         >
@@ -32,7 +32,7 @@
         <a-select
           v-model:value="filterCategory"
           placeholder="分类"
-          style="width: 150px"
+          class="filter-select"
           allowClear
           @change="handleSearch"
         >
@@ -42,14 +42,16 @@
         </a-select>
       </div>
 
-      <a-table
-        :columns="columns"
-        :data-source="templates"
-        :loading="loading"
-        :pagination="pagination"
-        row-key="id"
-        @change="handleTableChange"
-      >
+      <div class="table-responsive">
+        <a-table
+          :columns="columns"
+          :data-source="templates"
+          :loading="loading"
+          :pagination="pagination"
+          :scroll="{ x: 500 }"
+          row-key="id"
+          @change="handleTableChange"
+        >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             <a @click="handleEdit(record)">{{ record.name }}</a>
@@ -85,6 +87,7 @@
           </template>
         </template>
       </a-table>
+      </div>
     </a-card>
   </div>
 </template>
@@ -209,16 +212,79 @@ function getModeLabel(mode: string) {
   box-shadow: var(--shadow-raised);
 }
 
+@media (max-width: 767px) {
+  .page-header {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+}
+
 .header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .filter-bar {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-search {
+  width: 100%;
+  max-width: 200px;
+}
+
+.filter-select-sm {
+  width: 120px;
+}
+
+.filter-select {
+  width: 150px;
+}
+
+@media (max-width: 575px) {
+  .filter-search {
+    max-width: 100%;
+  }
+
+  .filter-select-sm,
+  .filter-select {
+    flex: 1;
+    min-width: 100px;
+  }
+}
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive :deep(.ant-table) {
+  min-width: 500px;
+}
+
+@media (max-width: 767px) {
+  .table-responsive :deep(.ant-table-thead > tr > th) {
+    padding: 12px 8px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .table-responsive :deep(.ant-table-tbody > tr > td) {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+
+  .table-responsive :deep(.ant-space) {
+    flex-wrap: wrap;
+    gap: 4px !important;
+  }
 }
 
 .text-muted {

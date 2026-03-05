@@ -9,7 +9,7 @@
         <a-select
           v-model:value="filterProjectId"
           placeholder="选择问卷"
-          style="width: 200px"
+          class="filter-select"
           allowClear
           show-search
           :filter-option="filterOption"
@@ -33,18 +33,20 @@
           @click="handleExport"
         >
           <template #icon><DownloadOutlined /></template>
-          导出Excel
+          <span class="btn-text">导出Excel</span>
         </a-button>
       </div>
 
-      <a-table
-        :columns="columns"
-        :data-source="answers"
-        :loading="loading"
-        :pagination="pagination"
-        row-key="id"
-        @change="handleTableChange"
-      >
+      <div class="table-responsive">
+        <a-table
+          :columns="columns"
+          :data-source="answers"
+          :loading="loading"
+          :pagination="pagination"
+          :scroll="{ x: 600 }"
+          row-key="id"
+          @change="handleTableChange"
+        >
         <template #bodyCell="{ column, record, index }">
           <template v-if="column.key === 'rowNum'">
             {{ pagination.total - (pagination.current - 1) * pagination.pageSize - index }}
@@ -88,6 +90,7 @@
           </template>
         </template>
       </a-table>
+      </div>
     </a-card>
   </div>
 </template>
@@ -237,9 +240,60 @@ function formatDate(dateStr: string) {
   box-shadow: var(--shadow-raised);
 }
 
+@media (max-width: 767px) {
+  .page-header {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+}
+
 .filter-bar {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-select {
+  width: 100%;
+  max-width: 200px;
+}
+
+@media (max-width: 575px) {
+  .filter-select {
+    max-width: 100%;
+  }
+
+  .btn-text {
+    display: none;
+  }
+}
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive :deep(.ant-table) {
+  min-width: 600px;
+}
+
+@media (max-width: 767px) {
+  .table-responsive :deep(.ant-table-thead > tr > th) {
+    padding: 12px 8px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .table-responsive :deep(.ant-table-tbody > tr > td) {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+
+  .table-responsive :deep(.ant-space) {
+    flex-wrap: wrap;
+    gap: 4px !important;
+  }
 }
 </style>

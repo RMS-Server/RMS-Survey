@@ -31,6 +31,7 @@ export interface ProjectView {
   createBy: string
   createAt: string
   updateAt: string
+  isOwner?: boolean  // true if current user is the project owner
 }
 
 // Project partner view
