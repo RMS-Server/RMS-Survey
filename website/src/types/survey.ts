@@ -28,6 +28,7 @@ export interface SurveySchema {
 export interface SurveyPage {
   id: string
   title: string
+  description?: string
   elements: SurveyElement[]
 }
 

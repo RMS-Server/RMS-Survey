@@ -29,6 +29,7 @@ export interface AnswerView {
   isRead: boolean
   readAt?: string
   readBy?: string
+  readByName?: string
   ipAddress: string
 }
 

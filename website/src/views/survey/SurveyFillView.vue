@@ -15,10 +15,10 @@
           :survey="surveySchema"
           :answers="answers"
           :project-id="surveyId"
+          :paged="surveySchema.pages.length > 1"
           @update:answers="answers = $event"
           @answer-change="handleAnswerChange"
           @submit="handleSubmit"
-          @temp-save="handleTempSave"
         />
       </template>
     </a-spin>
@@ -115,9 +115,12 @@ async function loadSurvey() {
   }
 }
 
-// Handle answer change event from SurveyRenderer
+// Auto-save draft on every answer change
 function handleAnswerChange(questionId: string) {
   recordAnswer(questionId)
+  if (surveyId.value) {
+    saveDraft(surveyId.value, answers.value, getTimingInfo())
+  }
 }
 
 async function handleSubmit(submittedAnswers: Record<string, AnswerValue>) {
@@ -179,22 +182,6 @@ async function handleSubmit(submittedAnswers: Record<string, AnswerValue>) {
   }
 }
 
-async function handleTempSave(submittedAnswers: Record<string, AnswerValue>) {
-  try {
-    const timing = getTimingInfo()
-    // Save to localStorage
-    saveDraft(surveyId.value, submittedAnswers, timing)
-    // Also save to backend
-    await surveyApi.tempSaveAnswer({
-      projectId: surveyId.value,
-      answer: submittedAnswers,
-      tempSave: 1
-    })
-    message.success('保存成功')
-  } catch {
-    message.error('保存失败，请重试')
-  }
-}
 </script>
 
 <style scoped>

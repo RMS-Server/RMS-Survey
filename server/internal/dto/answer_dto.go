@@ -26,19 +26,20 @@ type AnswerRequest struct {
 
 // AnswerView is the response DTO for an answer.
 type AnswerView struct {
-	ID        string          `json:"id"`
-	ProjectID string          `json:"projectId"`
-	Answer    json.RawMessage `json:"answer"`
-	MetaInfo  json.RawMessage `json:"metaInfo"`
-	TempSave  *int            `json:"tempSave"`
-	ExamScore *float32        `json:"examScore"`
-	CreateBy  string          `json:"createBy"`
-	CreatedAt string          `json:"createAt"`
-	UpdatedAt string          `json:"updateAt"`
-	IsRead    bool            `json:"isRead"`
-	ReadAt    string          `json:"readAt,omitempty"`
-	ReadBy    string          `json:"readBy,omitempty"`
-	IPAddress string          `json:"ipAddress"`
+	ID         string          `json:"id"`
+	ProjectID  string          `json:"projectId"`
+	Answer     json.RawMessage `json:"answer"`
+	MetaInfo   json.RawMessage `json:"metaInfo"`
+	TempSave   *int            `json:"tempSave"`
+	ExamScore  *float32        `json:"examScore"`
+	CreateBy   string          `json:"createBy"`
+	CreatedAt  string          `json:"createAt"`
+	UpdatedAt  string          `json:"updateAt"`
+	IsRead     bool            `json:"isRead"`
+	ReadAt     string          `json:"readAt,omitempty"`
+	ReadBy     string          `json:"readBy,omitempty"`
+	ReadByName string          `json:"readByName,omitempty"`
+	IPAddress  string          `json:"ipAddress"`
 }
 
 // DownloadQuery holds parameters for answer export.

@@ -152,6 +152,13 @@ func (s *AnswerService) GetAnswer(query *dto.AnswerQuery, userInfo *dto.UserInfo
 		return nil, err
 	}
 	v := toAnswerView(*a)
+	// Look up reader's username if answer has been read
+	if a.ReadBy != "" {
+		var user model.User
+		if err := s.db.Select("name").First(&user, "id = ?", a.ReadBy).Error; err == nil {
+			v.ReadByName = user.Name
+		}
+	}
 	return &v, nil
 }
 

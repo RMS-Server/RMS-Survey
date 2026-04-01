@@ -56,7 +56,7 @@
               {{ answer.isRead ? '已读' : '未读' }}
             </a-tag>
             <span v-if="answer.isRead && answer.readAt" class="read-time">
-              ({{ formatDate(answer.readAt) }})
+              ({{ formatDate(answer.readAt) }}<template v-if="answer.readByName">，由 {{ answer.readByName }} 标记</template>)
             </span>
           </a-descriptions-item>
           <a-descriptions-item v-if="hasTimingInfo" label="答题时长">

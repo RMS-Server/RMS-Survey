@@ -54,12 +54,65 @@
       </div>
 
       <div class="canvas">
-        <div v-if="elements.length === 0" class="empty-canvas">
+        <!-- Page tab bar -->
+        <div class="page-tabs-bar">
+          <div class="page-tabs-scroll">
+            <draggable
+              v-model="pages"
+              item-key="id"
+              handle=".page-drag-handle"
+              class="page-tab-list"
+              @start="onPageDragStart"
+              @end="onPageReorder"
+            >
+              <template #item="{ element: page, index }">
+                <div
+                  class="page-tab"
+                  :class="{ active: activePageIndex === index }"
+                  @click="activePageIndex = index"
+                >
+                  <HolderOutlined class="page-drag-handle" />
+                  <span class="page-tab-name">{{ page.title || `第 ${index + 1} 页` }}</span>
+                  <a-button
+                    v-if="pages.length > 1"
+                    type="text"
+                    size="small"
+                    class="page-tab-close"
+                    @click.stop="confirmRemovePage(index)"
+                  >
+                    <CloseOutlined />
+                  </a-button>
+                </div>
+              </template>
+            </draggable>
+          </div>
+          <a-button type="dashed" size="small" class="add-page-btn" @click="addPage">
+            <PlusOutlined />
+            <span class="btn-text">添加页面</span>
+          </a-button>
+        </div>
+
+        <!-- Page header editor -->
+        <div class="page-header-editor">
+          <a-input
+            v-model:value="activePage.title"
+            placeholder="页面标题（可选）"
+            class="page-title-input"
+          />
+          <a-textarea
+            v-model:value="activePage.description"
+            placeholder="页面说明文字（可选）"
+            :auto-size="{ minRows: 1, maxRows: 4 }"
+            class="page-desc-input"
+          />
+        </div>
+
+        <div v-if="activePage.elements.length === 0" class="empty-canvas">
           <p>点击左侧添加题目</p>
         </div>
         <draggable
           v-else
-          v-model="elements"
+          v-model="activePage.elements"
           item-key="id"
           handle=".drag-handle"
           class="question-list"
@@ -67,22 +120,39 @@
           <template #item="{ element, index }">
             <div
               class="question-item"
-              :class="{ selected: selectedIndex === index }"
-              @click="selectQuestion(index)"
+              :class="{ selected: selectedElementId === element.id }"
+              @click="selectQuestion(element.id)"
             >
               <div class="question-header">
                 <span class="drag-handle">
                   <HolderOutlined />
                 </span>
-                <span class="question-number">Q{{ index + 1 }}</span>
+                <span class="question-number">Q{{ globalQuestionIndex(element.id) }}</span>
                 <span class="question-type-tag">{{ getTypeLabel(element.type) }}</span>
                 <div class="question-actions">
                   <a-button type="text" size="small" @click.stop="moveUp(index)" :disabled="index === 0">
                     <UpOutlined />
                   </a-button>
-                  <a-button type="text" size="small" @click.stop="moveDown(index)" :disabled="index === elements.length - 1">
+                  <a-button type="text" size="small" @click.stop="moveDown(index)" :disabled="index === activePage.elements.length - 1">
                     <DownOutlined />
                   </a-button>
+                  <!-- Move to page dropdown -->
+                  <a-dropdown v-if="pages.length > 1" :trigger="['click']">
+                    <a-button type="text" size="small" @click.stop>
+                      <SwapOutlined />
+                    </a-button>
+                    <template #overlay>
+                      <a-menu @click="handleMoveToPage(element.id, $event)">
+                        <a-menu-item
+                          v-for="(p, pi) in pages"
+                          :key="p.id"
+                          :disabled="pi === activePageIndex"
+                        >
+                          {{ p.title || `第 ${pi + 1} 页` }}
+                        </a-menu-item>
+                      </a-menu>
+                    </template>
+                  </a-dropdown>
                   <a-button type="text" size="small" danger @click.stop="removeQuestion(index)">
                     <DeleteOutlined />
                   </a-button>
@@ -108,7 +178,7 @@
                   type="link"
                   size="small"
                   class="settings-toggle-btn"
-                  @click.stop="showMobileSettings(index)"
+                  @click.stop="showMobileSettings(element.id)"
                 >
                   更多设置
                 </a-button>
@@ -241,7 +311,7 @@
     >
       <LogicRuleEditor
         :logic="surveyLogic"
-        :elements="elements"
+        :elements="allElements"
         @update:logic="surveyLogic = $event"
       />
     </a-modal>
@@ -270,6 +340,21 @@
     >
       <SurveyRenderer :survey="surveyData" :answers="previewAnswers" :preview="true" />
     </a-modal>
+
+    <!-- 删除页面确认模态框 -->
+    <a-modal
+      v-model:open="removePageModalVisible"
+      title="删除页面"
+      @ok="confirmRemovePageAction"
+      ok-text="确认"
+      cancel-text="取消"
+    >
+      <p>该页面包含 <strong>{{ removePageTargetQuestionCount }}</strong> 道题目，请选择处理方式：</p>
+      <a-radio-group v-model:value="removePageAction" style="margin-top: 12px">
+        <a-radio value="move" style="display: block; margin-bottom: 8px">将题目移动到相邻页面</a-radio>
+        <a-radio value="delete" style="display: block">删除题目</a-radio>
+      </a-radio-group>
+    </a-modal>
   </div>
 </template>
 
@@ -281,6 +366,7 @@ import draggable from 'vuedraggable'
 import { v4 as uuidv4 } from 'uuid'
 import { useProjectStore } from '@/stores/project'
 import { surveyApi } from '@/api/survey'
+import { usePageEditor } from '@/composables/usePageEditor'
 import {
   ArrowLeftOutlined,
   SaveOutlined,
@@ -297,7 +383,10 @@ import {
   StarOutlined,
   BranchesOutlined,
   SettingOutlined,
-  EditOutlined
+  EditOutlined,
+  PlusOutlined,
+  CloseOutlined,
+  SwapOutlined
 } from '@ant-design/icons-vue'
 import SurveyRenderer from '@/components/survey/SurveyRenderer.vue'
 import LogicRuleEditor from '@/components/survey/LogicRuleEditor.vue'
@@ -315,10 +404,9 @@ const projectId = computed(() => route.params.id as string | undefined)
 const isEdit = computed(() => !!projectId.value)
 
 const projectName = ref('')
-const elements = ref<SurveyElement[]>([])
 const surveyLogic = ref<SurveyLogic>({ rules: [] })
 const surveySetting = ref<SurveySetting>({ projectId: '' })
-const selectedIndex = ref(-1)
+const selectedElementId = ref<string | null>(null)
 const saving = ref(false)
 const publishing = ref(false)
 const previewVisible = ref(false)
@@ -326,12 +414,86 @@ const logicModalVisible = ref(false)
 const settingModalVisible = ref(false)
 const mobileSettingsVisible = ref(false)
 
+// Remove page confirmation state
+const removePageModalVisible = ref(false)
+const removePageTargetIndex = ref(-1)
+const removePageTargetQuestionCount = ref(0)
+const removePageAction = ref<'move' | 'delete'>('move')
+
+const {
+  pages,
+  activePageIndex,
+  activePage,
+  allElements,
+  addPage,
+  removePage,
+  deletePageWithQuestions,
+  moveQuestionToPage,
+  cleanupLogicRules,
+  loadPages
+} = usePageEditor(surveyLogic)
+
 const selectedElement = computed(() => {
-  if (selectedIndex.value >= 0 && selectedIndex.value < elements.value.length) {
-    return elements.value[selectedIndex.value]
+  if (!selectedElementId.value) return null
+  for (const page of pages.value) {
+    const el = page.elements.find(e => e.id === selectedElementId.value)
+    if (el) return el
   }
   return null
 })
+
+function globalQuestionIndex(elementId: string): number {
+  let count = 1
+  for (const page of pages.value) {
+    for (const el of page.elements) {
+      if (el.id === elementId) return count
+      count++
+    }
+  }
+  return count
+}
+
+// Track active page by ID before drag, then restore after reorder
+let _activePageIdBeforeReorder: string | null = null
+
+function onPageDragStart() {
+  _activePageIdBeforeReorder = pages.value[activePageIndex.value]?.id ?? null
+}
+
+function onPageReorder() {
+  if (_activePageIdBeforeReorder) {
+    const newIdx = pages.value.findIndex(p => p.id === _activePageIdBeforeReorder)
+    activePageIndex.value = newIdx >= 0 ? newIdx : Math.min(activePageIndex.value, pages.value.length - 1)
+  }
+  _activePageIdBeforeReorder = null
+}
+
+function confirmRemovePage(index: number) {
+  const count = pages.value[index].elements.length
+  if (count === 0) {
+    // Empty page, just remove directly
+    removePage(index)
+    return
+  }
+  removePageTargetIndex.value = index
+  removePageTargetQuestionCount.value = count
+  removePageAction.value = 'move'
+  removePageModalVisible.value = true
+}
+
+function confirmRemovePageAction() {
+  const index = removePageTargetIndex.value
+  if (removePageAction.value === 'move') {
+    removePage(index)
+    // Element moved to another page; selectedElement computed still finds it
+  } else {
+    const deletedIds = deletePageWithQuestions(index)
+    if (selectedElementId.value && deletedIds.includes(selectedElementId.value)) {
+      selectedElementId.value = null
+    }
+  }
+  removePageModalVisible.value = false
+}
 
 // File type options for attachment config
 const fileTypeOptions = [
@@ -398,13 +560,13 @@ const questionAttachments = computed<QuestionAttachment[]>({
 const surveyData = computed(() => ({
   id: projectId.value || 'preview',
   title: projectName.value,
-  pages: [{ id: 'page1', title: 'Page 1', elements: elements.value }],
+  pages: pages.value,
   logic: surveyLogic.value
 }))
 
 const previewAnswers = computed(() => {
   const answers: Record<string, unknown> = {}
-  elements.value.forEach(el => {
+  allElements.value.forEach(el => {
     if (el.type === 'checkbox') {
       answers[el.id] = []
     } else if (el.type === 'cloze') {
@@ -455,81 +617,59 @@ function addQuestion(type: string) {
     blanks: type === 'cloze' ? [] : undefined,
     attachment: { enabled: false, maxFiles: 1, maxSize: 10485760, allowedTypes: ['.pdf', '.doc', '.docx', '.jpg', '.png'] }
   }
-  elements.value.push(element)
-  selectedIndex.value = elements.value.length - 1
+  activePage.value.elements.push(element)
+  selectedElementId.value = element.id
 }
 
 function updateElement(index: number, updatedElement: SurveyElement) {
-  if (index >= 0 && index < elements.value.length) {
-    elements.value[index] = updatedElement
+  if (index >= 0 && index < activePage.value.elements.length) {
+    activePage.value.elements[index] = updatedElement
   }
 }
 
-function selectQuestion(index: number) {
-  selectedIndex.value = index
+function selectQuestion(id: string) {
+  selectedElementId.value = id
 }
 
-function showMobileSettings(index: number) {
-  selectedIndex.value = index
+function showMobileSettings(id: string) {
+  selectedElementId.value = id
   mobileSettingsVisible.value = true
 }
 
 function removeQuestion(index: number) {
-  const deletedId = elements.value[index]?.id
-  elements.value.splice(index, 1)
-  if (selectedIndex.value === index) {
-    selectedIndex.value = -1
-  } else if (selectedIndex.value > index) {
-    selectedIndex.value--
+  const deletedId = activePage.value.elements[index]?.id
+  activePage.value.elements.splice(index, 1)
+  if (selectedElementId.value === deletedId) {
+    selectedElementId.value = null
   }
-  // Clean up logic rules referencing deleted question
   if (deletedId) {
     cleanupLogicRules(deletedId)
   }
 }
 
-// Remove references to deleted question from logic rules
-function cleanupLogicRules(deletedId: string) {
-  const rulesToRemove: string[] = []
-
-  for (const rule of surveyLogic.value.rules) {
-    // Remove from target IDs
-    rule.action.targetIds = rule.action.targetIds.filter(id => id !== deletedId)
-
-    // Remove conditions referencing deleted question
-    rule.condition.conditions = rule.condition.conditions.filter(
-      c => c.questionId !== deletedId
-    )
-
-    // Mark rule for removal if no targets or no conditions left
-    if (rule.action.targetIds.length === 0 || rule.condition.conditions.length === 0) {
-      rulesToRemove.push(rule.id)
-    }
-  }
-
-  // Remove empty rules
-  surveyLogic.value.rules = surveyLogic.value.rules.filter(
-    r => !rulesToRemove.includes(r.id)
-  )
+function handleMoveToPage(elementId: string, info: unknown) {
+  const key = (info as { key: string | number }).key
+  const targetPageIndex = moveQuestionToPage(elementId, String(key))
+  // Switch to the target page so the user can see the moved element
+  activePageIndex.value = targetPageIndex
+  selectedElementId.value = elementId
 }
 
 function moveUp(index: number) {
+  const els = activePage.value.elements
   if (index > 0) {
-    const temp = elements.value[index]
-    elements.value[index] = elements.value[index - 1]
-    elements.value[index - 1] = temp
-    if (selectedIndex.value === index) selectedIndex.value--
-    else if (selectedIndex.value === index - 1) selectedIndex.value++
+    const temp = els[index]
+    els[index] = els[index - 1]
+    els[index - 1] = temp
   }
 }
 
 function moveDown(index: number) {
-  if (index < elements.value.length - 1) {
-    const temp = elements.value[index]
-    elements.value[index] = elements.value[index + 1]
-    elements.value[index + 1] = temp
-    if (selectedIndex.value === index) selectedIndex.value++
-    else if (selectedIndex.value === index + 1) selectedIndex.value--
+  const els = activePage.value.elements
+  if (index < els.length - 1) {
+    const temp = els[index]
+    els[index] = els[index + 1]
+    els[index + 1] = temp
   }
 }
 
@@ -552,7 +692,7 @@ async function handleSave() {
     const survey: SurveySchema = {
       id: projectId.value || uuidv4(),
       title: projectName.value,
-      pages: [{ id: 'page1', title: 'Page 1', elements: elements.value }],
+      pages: pages.value,
       logic: surveyLogic.value
     }
 
@@ -625,14 +765,11 @@ onMounted(async () => {
       projectName.value = project.name
       if (project.survey) {
         const survey = project.survey as SurveySchema
-        if (survey.pages && survey.pages[0]) {
-          elements.value = survey.pages[0].elements || []
-        }
+        loadPages(survey.pages)
         if (survey.logic) {
           surveyLogic.value = survey.logic
         }
       }
-      // Load survey settings
       await loadSetting()
     } catch {
       message.error('加载问卷失败')
@@ -820,6 +957,116 @@ onMounted(async () => {
   .canvas {
     padding: 24px;
   }
+}
+
+/* Page tabs bar */
+.page-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: nowrap;
+}
+
+.page-tabs-scroll {
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.page-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.page-tab-list {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+  min-width: min-content;
+}
+
+.page-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--surface-glass-input);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  transition: all 0.2s;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.page-tab:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text-main);
+}
+
+.page-tab.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.page-drag-handle {
+  cursor: move;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.page-tab.active .page-drag-handle {
+  opacity: 0.8;
+}
+
+.page-tab-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-tab-close {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  padding: 0 !important;
+  font-size: 10px;
+  color: inherit !important;
+  opacity: 0.7;
+}
+
+.page-tab-close:hover {
+  opacity: 1;
+}
+
+.add-page-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Page header editor */
+.page-header-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+}
+
+.page-title-input {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.page-desc-input {
+  font-size: 13px;
+  color: var(--color-text-muted);
 }
 
 .empty-canvas {
