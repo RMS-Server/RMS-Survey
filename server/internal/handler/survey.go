@@ -56,8 +56,6 @@ func (h *SurveyHandler) RegisterRoutes(public, survey gin.IRouter) {
 
 	survey.GET("/setting", h.GetSetting)
 	survey.POST("/setting", h.UpdateSetting)
-	survey.GET("/logic", h.GetLogic)
-	survey.POST("/logic", h.UpdateLogic)
 }
 
 func (h *SurveyHandler) LoadProject(c *gin.Context) {
@@ -330,29 +328,3 @@ func (h *SurveyHandler) UpdateSetting(c *gin.Context) {
 	response.OK(c, nil)
 }
 
-func (h *SurveyHandler) GetLogic(c *gin.Context) {
-	projectID := c.Query("projectId")
-	if projectID == "" {
-		response.Fail(c, response.CodeError, "projectId required")
-		return
-	}
-	result, err := h.svc.GetLogic(projectID)
-	if err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	response.OK(c, result)
-}
-
-func (h *SurveyHandler) UpdateLogic(c *gin.Context) {
-	var req dto.SurveyLogicRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	if err := h.svc.UpdateLogic(&req, currentUser(c)); err != nil {
-		response.Fail(c, response.CodeError, err.Error())
-		return
-	}
-	response.OK(c, nil)
-}

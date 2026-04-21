@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { projectApi } from '@/api/project'
-import type { ProjectView, ProjectQuery, ProjectRequest } from '@/types/project'
+import type { ProjectView, ProjectQuery, ProjectRequest, ProjectMetaUpdate, ProjectSurveyUpdate } from '@/types/project'
 
 export const useProjectStore = defineStore('project', () => {
   const projects = ref<ProjectView[]>([])
@@ -37,12 +37,14 @@ export const useProjectStore = defineStore('project', () => {
     return project
   }
 
-  async function updateProject(data: ProjectRequest) {
-    const project = await projectApi.update(data)
-    if (currentProject.value?.id === data.id) {
-      currentProject.value = project
-    }
-    return project
+  // Sparse meta update — survey/setting cannot be passed through here.
+  async function updateProject(data: ProjectMetaUpdate) {
+    await projectApi.update(data)
+  }
+
+  // Replaces the survey schema on the server. Leaves setting/meta untouched.
+  async function updateProjectSurvey(data: ProjectSurveyUpdate) {
+    await projectApi.updateSurvey(data)
   }
 
   async function deleteProject(id: string) {
@@ -67,6 +69,7 @@ export const useProjectStore = defineStore('project', () => {
     fetchProject,
     createProject,
     updateProject,
+    updateProjectSurvey,
     deleteProject,
     restoreProject,
     clearCurrentProject

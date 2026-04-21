@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +12,11 @@ import (
 	"github.com/rms-survey/server/internal/model"
 	"github.com/rms-survey/server/internal/repository"
 )
+
+// ErrInvalidSurveyPayload is returned when a survey update body is present
+// but semantically empty (null / empty / {}). Rejecting these loudly keeps
+// a misbehaving client from blanking a saved survey.
+var ErrInvalidSurveyPayload = errors.New("survey payload is empty or null")
 
 // isAdmin checks if the user has admin role.
 func isAdmin(userInfo *dto.UserInfo) bool {
@@ -100,30 +107,47 @@ func (s *ProjectService) CreateProject(req *dto.ProjectRequest, userInfo *dto.Us
 	return &v, nil
 }
 
-// UpdateProject updates an existing project.
-func (s *ProjectService) UpdateProject(req *dto.ProjectRequest, userInfo *dto.UserInfo) error {
+// UpdateProjectMeta updates partial meta fields on an existing project.
+// Only pointer-non-nil fields are written; everything else is preserved.
+// It physically cannot touch survey or setting — that is the whole point.
+func (s *ProjectService) UpdateProjectMeta(req *dto.ProjectMetaUpdateRequest, userInfo *dto.UserInfo) error {
 	p, err := s.repo.HasProjectAccess(req.ID, userInfo)
 	if err != nil {
 		return err
 	}
-	if req.Name != "" {
-		p.Name = req.Name
+	if req.Name != nil {
+		p.Name = *req.Name
 	}
-	if req.Survey != nil {
-		p.Survey = string(req.Survey)
-	}
-	if req.Setting != nil {
-		p.Setting = string(req.Setting)
+	if req.ParentID != nil {
+		p.ParentID = *req.ParentID
 	}
 	if req.Status != nil {
 		p.Status = *req.Status
 	}
-	if req.Mode != "" {
-		p.Mode = req.Mode
+	if req.Mode != nil {
+		p.Mode = *req.Mode
 	}
 	if req.Priority != nil {
 		p.Priority = *req.Priority
 	}
+	p.UpdateBy = userInfo.UserID
+	return s.repo.UpdateProject(p)
+}
+
+// UpdateProjectSurvey replaces the survey schema JSON on an existing project.
+// Does not touch any other column. Rejects null / empty / {} bodies — gin's
+// binding:"required" alone lets those slip through since json.RawMessage
+// is just []byte under the hood.
+func (s *ProjectService) UpdateProjectSurvey(req *dto.ProjectSurveyUpdateRequest, userInfo *dto.UserInfo) error {
+	body := bytes.TrimSpace(req.Survey)
+	if len(body) == 0 || bytes.Equal(body, []byte("null")) || bytes.Equal(body, []byte("{}")) {
+		return ErrInvalidSurveyPayload
+	}
+	p, err := s.repo.HasProjectAccess(req.ID, userInfo)
+	if err != nil {
+		return err
+	}
+	p.Survey = string(req.Survey)
 	p.UpdateBy = userInfo.UserID
 	return s.repo.UpdateProject(p)
 }

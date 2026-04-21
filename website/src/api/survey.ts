@@ -7,8 +7,6 @@ import type {
   SurveyStatistics,
   SurveySetting,
   SurveySettingRequest,
-  SurveyLogic,
-  SurveyLogicRequest,
   QueryRequest,
   DictRequest,
   ProjectValidation
@@ -106,15 +104,5 @@ export const surveyApi = {
   // Update survey settings
   updateSetting(data: SurveySettingRequest): Promise<void> {
     return request.post('/survey/setting', data)
-  },
-
-  // Get survey logic rules
-  getLogic(projectId: string): Promise<SurveyLogic> {
-    return request.get('/survey/logic', { params: { projectId } })
-  },
-
-  // Update survey logic rules
-  updateLogic(data: SurveyLogicRequest): Promise<void> {
-    return request.post('/survey/logic', data)
   }
 }

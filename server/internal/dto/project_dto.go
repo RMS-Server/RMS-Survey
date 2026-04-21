@@ -11,7 +11,11 @@ type ProjectQuery struct {
 	Deleted  bool   `json:"deleted" form:"deleted"`
 }
 
-// ProjectRequest is used for create/update/delete project operations.
+// ProjectRequest is used for create and for ID-only operations
+// (delete, destroy, restore). It is NOT used for updates — update
+// paths use the sparse DTOs below so that absent fields mean
+// "do not touch". Mixing full and partial payloads on one endpoint
+// is how we lost data in the past (empty object overwriting settings).
 type ProjectRequest struct {
 	ID       string          `json:"id"`
 	ParentID string          `json:"parentId"`
@@ -23,6 +27,24 @@ type ProjectRequest struct {
 	Priority *int            `json:"priority"`
 	// IDs for batch operations
 	IDs []string `json:"ids"`
+}
+
+// ProjectMetaUpdateRequest carries partial meta updates. Every field
+// is a pointer: absent in JSON means "do not touch". This endpoint
+// MUST NOT accept survey or setting — those have dedicated endpoints.
+type ProjectMetaUpdateRequest struct {
+	ID       string  `json:"id" binding:"required"`
+	ParentID *string `json:"parentId"`
+	Name     *string `json:"name"`
+	Status   *int    `json:"status"`
+	Mode     *string `json:"mode"`
+	Priority *int    `json:"priority"`
+}
+
+// ProjectSurveyUpdateRequest updates only the survey schema JSON.
+type ProjectSurveyUpdateRequest struct {
+	ID     string          `json:"id" binding:"required"`
+	Survey json.RawMessage `json:"survey" binding:"required"`
 }
 
 // ProjectView is the response DTO for a project.

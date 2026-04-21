@@ -173,11 +173,6 @@ export interface SurveyLogic {
   rules: LogicRule[]
 }
 
-export interface SurveyLogicRequest {
-  projectId: string
-  logic: SurveyLogic
-}
-
 // Query/Dict request types
 export interface QueryRequest {
   projectId: string

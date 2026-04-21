@@ -681,10 +681,10 @@ function handlePreview() {
   previewVisible.value = true
 }
 
-async function handleSave() {
+async function handleSave(): Promise<boolean> {
   if (!projectName.value) {
     message.warning('请输入问卷名称')
-    return
+    return false
   }
 
   saving.value = true
@@ -697,36 +697,39 @@ async function handleSave() {
     }
 
     if (isEdit.value) {
+      await projectStore.updateProjectSurvey({
+        id: projectId.value!,
+        survey: survey as unknown as Record<string, unknown>
+      })
       await projectStore.updateProject({
-        id: projectId.value,
-        name: projectName.value,
-        survey: survey as unknown as Record<string, unknown>,
-        setting: {}
+        id: projectId.value!,
+        name: projectName.value
       })
       message.success('保存成功')
     } else {
       const result = await projectStore.createProject({
         name: projectName.value,
-        survey: survey as unknown as Record<string, unknown>,
-        setting: {}
+        survey: survey as unknown as Record<string, unknown>
       })
       message.success('创建成功')
       router.push(`/project/${result.id}/edit`)
     }
+    return true
   } catch {
     message.error('保存失败')
+    return false
   } finally {
     saving.value = false
   }
 }
 
 async function handlePublish() {
-  await handleSave()
+  const saved = await handleSave()
+  if (!saved || !isEdit.value) return
   publishing.value = true
   try {
     await projectStore.updateProject({
       id: projectId.value!,
-      name: projectName.value,
       status: 1
     })
     message.success('发布成功')

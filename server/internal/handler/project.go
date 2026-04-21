@@ -39,7 +39,8 @@ func (h *ProjectHandler) RegisterRoutes(project gin.IRouter) {
 	project.GET("", h.GetProject)
 	project.GET("/setting", h.GetSetting)
 	project.POST("/create", h.CreateProject)
-	project.POST("/update", h.UpdateProject)
+	project.POST("/update", h.UpdateProjectMeta)
+	project.POST("/updateSurvey", h.UpdateProjectSurvey)
 	project.POST("/delete", h.DeleteProject)
 	project.GET("/trash", h.GetDeleted)
 	project.POST("/destroy", h.DestroyProject)
@@ -134,13 +135,28 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	response.OK(c, result)
 }
 
-func (h *ProjectHandler) UpdateProject(c *gin.Context) {
-	var req dto.ProjectRequest
+// UpdateProjectMeta accepts partial meta updates. Survey and setting
+// are NOT accepted here — use /project/updateSurvey or /survey/setting.
+func (h *ProjectHandler) UpdateProjectMeta(c *gin.Context) {
+	var req dto.ProjectMetaUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, response.CodeError, err.Error())
 		return
 	}
-	if handleServiceErr(c, h.svc.UpdateProject(&req, currentUser(c))) {
+	if handleServiceErr(c, h.svc.UpdateProjectMeta(&req, currentUser(c))) {
+		return
+	}
+	response.OK(c, nil)
+}
+
+// UpdateProjectSurvey replaces the survey schema JSON. Touches nothing else.
+func (h *ProjectHandler) UpdateProjectSurvey(c *gin.Context) {
+	var req dto.ProjectSurveyUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	if handleServiceErr(c, h.svc.UpdateProjectSurvey(&req, currentUser(c))) {
 		return
 	}
 	response.OK(c, nil)

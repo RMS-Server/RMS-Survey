@@ -30,12 +30,6 @@ type SurveySettingRequest struct {
 	Setting   json.RawMessage `json:"setting"`
 }
 
-// SurveyLogicRequest is used to update survey logic.
-type SurveyLogicRequest struct {
-	ProjectID string          `json:"projectId"`
-	Survey    json.RawMessage `json:"survey"`
-}
-
 // SurveyQuery holds query parameters for survey endpoints.
 type SurveyQuery struct {
 	ProjectID string `json:"projectId" form:"projectId"`

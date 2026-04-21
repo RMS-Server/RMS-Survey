@@ -110,26 +110,6 @@ func (s *SurveyService) UpdateSetting(req *dto.SurveySettingRequest, userInfo *d
 	return s.projectRepo.UpdateProject(p)
 }
 
-// GetLogic returns the survey logic (survey JSON) for a project.
-func (s *SurveyService) GetLogic(projectID string) (json.RawMessage, error) {
-	p, err := s.projectRepo.GetProject(projectID)
-	if err != nil {
-		return nil, err
-	}
-	return json.RawMessage(p.Survey), nil
-}
-
-// UpdateLogic updates the survey logic (survey JSON) for a project.
-func (s *SurveyService) UpdateLogic(req *dto.SurveyLogicRequest, userInfo *dto.UserInfo) error {
-	p, err := s.projectRepo.GetProject(req.ProjectID)
-	if err != nil {
-		return err
-	}
-	p.Survey = string(req.Survey)
-	p.UpdateBy = userInfo.UserID
-	return s.projectRepo.UpdateProject(p)
-}
-
 // ValidateProject validates a survey (password check, status check).
 func (s *SurveyService) ValidateProject(req *dto.SurveyLoadRequest) (*dto.SurveyView, error) {
 	return s.LoadProject(req)

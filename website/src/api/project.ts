@@ -1,5 +1,5 @@
 import request from './index'
-import type { ProjectQuery, ProjectRequest, ProjectView, ProjectPartnerQuery, ProjectPartnerRequest, ProjectPartnerView, SelectUserView, SelectRoleView, SelectTemplateView } from '@/types/project'
+import type { ProjectQuery, ProjectRequest, ProjectMetaUpdate, ProjectSurveyUpdate, ProjectView, ProjectPartnerQuery, ProjectPartnerRequest, ProjectPartnerView, SelectUserView, SelectRoleView, SelectTemplateView } from '@/types/project'
 import type { TemplateQuery } from '@/types/template'
 import type { PageResponse } from '@/types/api'
 
@@ -19,9 +19,15 @@ export const projectApi = {
     return request.post('/project/create', data)
   },
 
-  // Update existing project
-  update(data: ProjectRequest): Promise<ProjectView> {
+  // Update project meta (name, status, mode, priority, parentId).
+  // CANNOT modify survey or setting — use updateSurvey / surveyApi.updateSetting.
+  update(data: ProjectMetaUpdate): Promise<void> {
     return request.post('/project/update', data)
+  },
+
+  // Replace the survey schema JSON. Touches nothing else.
+  updateSurvey(data: ProjectSurveyUpdate): Promise<void> {
+    return request.post('/project/updateSurvey', data)
   },
 
   // Delete project (soft delete)

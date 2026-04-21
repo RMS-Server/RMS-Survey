@@ -7,6 +7,9 @@ export interface ProjectQuery {
   deleted?: boolean
 }
 
+// ProjectRequest is for create + id-only ops (delete/restore/destroy).
+// Update paths use the sparse types below — mixing full and partial on
+// one endpoint is how `setting: {}` wiped IP rules in the past.
 export interface ProjectRequest {
   id?: string
   parentId?: string
@@ -17,6 +20,23 @@ export interface ProjectRequest {
   mode?: string
   priority?: number
   ids?: string[]
+}
+
+// Sparse meta update: every field optional, absent fields are not touched.
+// Server-side endpoint cannot accept survey/setting at all.
+export interface ProjectMetaUpdate {
+  id: string
+  parentId?: string
+  name?: string
+  status?: number
+  mode?: string
+  priority?: number
+}
+
+// Survey-only update: replaces the survey schema and nothing else.
+export interface ProjectSurveyUpdate {
+  id: string
+  survey: object
 }
 
 export interface ProjectView {
