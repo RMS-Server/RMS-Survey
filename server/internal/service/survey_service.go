@@ -90,6 +90,12 @@ func (s *SurveyService) TempSaveAnswerWithIP(req *dto.AnswerRequest, ipAddress s
 	return s.answerSvc.CreatePublicAnswerWithIP(req, ipAddress)
 }
 
+// CheckDevice exposes the device-fingerprint pre-check used before rendering
+// the fill form. Delegates to AnswerService so the count logic stays in one place.
+func (s *SurveyService) CheckDevice(req *dto.DeviceCheckRequest) (*dto.DeviceCheckView, error) {
+	return s.answerSvc.CheckDeviceSubmission(req.ProjectID, req.DeviceFingerprint)
+}
+
 // GetSetting returns the survey setting for a project.
 func (s *SurveyService) GetSetting(projectID string) (json.RawMessage, error) {
 	p, err := s.projectRepo.GetProject(projectID)

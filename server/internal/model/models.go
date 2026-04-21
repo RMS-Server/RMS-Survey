@@ -36,6 +36,7 @@ type Answer struct {
 	ReadAt           *time.Time `gorm:"column:read_at" json:"readAt"`
 	ReadBy           string     `gorm:"column:read_by;size:256" json:"readBy"`
 	IPAddress        string     `gorm:"column:ip_address;size:45;index" json:"ipAddress"`
+	DeviceFingerprint string    `gorm:"column:device_fingerprint;size:64;index" json:"deviceFingerprint"`
 }
 
 func (Answer) TableName() string { return "t_answer" }

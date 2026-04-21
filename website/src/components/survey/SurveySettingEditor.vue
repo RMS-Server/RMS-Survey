@@ -36,6 +36,32 @@
           </a-col>
         </a-row>
       </template>
+
+      <a-divider>设备限制</a-divider>
+      <a-form-item label="启用设备限制">
+        <a-switch
+          v-model:checked="localSetting.deviceLimitEnabled"
+          checked-children="开启"
+          un-checked-children="关闭"
+        />
+        <span class="setting-hint">基于浏览器指纹识别同一设备，打开链接时即预检</span>
+      </a-form-item>
+
+      <template v-if="localSetting.deviceLimitEnabled">
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="单设备最大提交次数">
+              <a-input-number
+                v-model:value="localSetting.deviceMaxSubmissions"
+                :min="0"
+                placeholder="0表示不限制"
+                style="width: 100%"
+              />
+              <span class="setting-hint">同一设备最多可提交次数，达到后再次打开链接将直接拦截</span>
+            </a-form-item>
+          </a-col>
+        </a-row>
+      </template>
     </a-form>
 
     <div class="setting-actions">
@@ -67,20 +93,25 @@ interface LocalSetting {
   ipLimitEnabled: boolean
   ipMaxSubmissions: number
   ipInterval: number
+  deviceLimitEnabled: boolean
+  deviceMaxSubmissions: number
 }
 
 const localSetting = ref<LocalSetting>({
   ipLimitEnabled: false,
   ipMaxSubmissions: 0,
-  ipInterval: 0
+  ipInterval: 0,
+  deviceLimitEnabled: false,
+  deviceMaxSubmissions: 0
 })
 
-// Watch for changes in props.setting
 watch(() => props.setting, (newSetting) => {
   localSetting.value = {
     ipLimitEnabled: newSetting.ipLimitEnabled || false,
     ipMaxSubmissions: newSetting.ipMaxSubmissions || 0,
-    ipInterval: newSetting.ipInterval || 0
+    ipInterval: newSetting.ipInterval || 0,
+    deviceLimitEnabled: newSetting.deviceLimitEnabled || false,
+    deviceMaxSubmissions: newSetting.deviceMaxSubmissions || 0
   }
 }, { immediate: true, deep: true })
 
@@ -95,7 +126,9 @@ async function handleSave() {
       projectId: props.projectId,
       ipLimitEnabled: localSetting.value.ipLimitEnabled,
       ipMaxSubmissions: localSetting.value.ipMaxSubmissions || undefined,
-      ipInterval: localSetting.value.ipInterval || undefined
+      ipInterval: localSetting.value.ipInterval || undefined,
+      deviceLimitEnabled: localSetting.value.deviceLimitEnabled,
+      deviceMaxSubmissions: localSetting.value.deviceMaxSubmissions || undefined
     }
     emit('update:setting', setting)
     message.success('设置已保存')

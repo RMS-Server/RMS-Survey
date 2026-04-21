@@ -24,6 +24,16 @@ export const surveyApi = {
     return request.post('/public/saveAnswer', data)
   },
 
+  // Pre-check whether this device may still submit the given project
+  checkDevice(data: { projectId: string; deviceFingerprint: string }): Promise<{
+    allowed: boolean
+    submittedCount: number
+    maxSubmissions: number
+    limitEnabled: boolean
+  }> {
+    return request.post('/public/checkDevice', data)
+  },
+
   // Temp save survey answer
   tempSaveAnswer(data: AnswerRequest): Promise<PublicAnswerView> {
     return request.post('/public/tempSaveAnswer', data)

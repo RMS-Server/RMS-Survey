@@ -2,6 +2,8 @@ package service
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,11 +26,16 @@ var ErrIPAlreadySubmitted = errors.New("ip already submitted")
 // ErrIPIntervalTooShort is returned when IP submits too quickly.
 var ErrIPIntervalTooShort = errors.New("submission interval too short")
 
-// SurveySetting represents the survey settings for IP restriction.
+// ErrDeviceAlreadySubmitted is returned when the browser-device fingerprint has already reached its submission cap.
+var ErrDeviceAlreadySubmitted = errors.New("device already submitted")
+
+// SurveySetting represents the submission-restriction settings for a survey.
 type SurveySetting struct {
-	IPLimitEnabled  bool `json:"ipLimitEnabled"`  // IP restriction master switch
-	IPMaxSubmissions int  `json:"ipMaxSubmissions"` // Max submissions per IP (0 = unlimited)
-	IPInterval      int  `json:"ipInterval"`       // Min seconds between submissions from same IP (0 = no limit)
+	IPLimitEnabled       bool `json:"ipLimitEnabled"`       // IP restriction master switch
+	IPMaxSubmissions     int  `json:"ipMaxSubmissions"`     // Max submissions per IP (0 = unlimited)
+	IPInterval           int  `json:"ipInterval"`           // Min seconds between submissions from same IP (0 = no limit)
+	DeviceLimitEnabled   bool `json:"deviceLimitEnabled"`   // Device-fingerprint restriction master switch
+	DeviceMaxSubmissions int  `json:"deviceMaxSubmissions"` // Max submissions per device (0 = unlimited)
 }
 
 // uploadSurveySchema represents the survey structure for Excel import.
@@ -179,93 +186,182 @@ func (s *AnswerService) CreatePublicAnswer(req *dto.AnswerRequest) error {
 	return s.doCreateAnswer(req, &dto.UserInfo{}, "")
 }
 
-// CreatePublicAnswerWithIP inserts a new answer with IP address and performs IP restriction check.
-// Uses MySQL advisory lock to prevent race conditions in concurrent submissions.
+// CreatePublicAnswerWithIP inserts a new answer while enforcing both IP and
+// device-fingerprint submission limits. Each active limit acquires its own
+// MySQL advisory lock (outside the transaction, released after commit) so
+// concurrent submissions from the same IP/device can never race past the cap.
 func (s *AnswerService) CreatePublicAnswerWithIP(req *dto.AnswerRequest, ipAddress string) error {
 	project, err := s.projectRepo.GetProject(req.ProjectID)
 	if err != nil {
 		return err
 	}
 
-	// Check if this is a real submission (not temp save)
 	isRealSubmission := req.TempSave == nil || *req.TempSave == 0
 
-	// Parse settings once
 	var setting SurveySetting
 	if project.Setting != "" {
 		_ = json.Unmarshal([]byte(project.Setting), &setting)
 	}
 
-	// Determine if IP restriction applies
+	fingerprint := req.DeviceFingerprint
 	needIPCheck := isRealSubmission && ipAddress != "" && setting.IPLimitEnabled
+	needDeviceCheck := isRealSubmission && fingerprint != "" && setting.DeviceLimitEnabled && setting.DeviceMaxSubmissions > 0
 
-	// Acquire MySQL advisory lock OUTSIDE the transaction
-	// Lock must be held until AFTER transaction commits to prevent race conditions
-	if needIPCheck {
-		lockName := fmt.Sprintf("ip_submit:%s:%s", req.ProjectID, ipAddress)
-		var lockResult int
-		if err := s.db.Raw("SELECT GET_LOCK(?, 5)", lockName).Scan(&lockResult).Error; err != nil {
-			return fmt.Errorf("acquire IP lock: %w", err)
-		}
-		if lockResult != 1 {
-			return errors.New("submission in progress, please retry")
-		}
-		defer func() {
-			s.db.Exec("SELECT RELEASE_LOCK(?)", lockName)
-		}()
-	}
-
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		// IP restriction check within transaction (lock is already held)
+	// MySQL's GET_LOCK / RELEASE_LOCK are session-scoped: the lock is held
+	// against the specific connection that ran GET_LOCK, and RELEASE_LOCK on a
+	// different connection is a no-op. GORM's default `*gorm.DB` pulls an
+	// arbitrary pool connection per call, so a naive GET_LOCK → COUNT → INSERT →
+	// RELEASE_LOCK sequence would spread those four statements across four
+	// different sessions and the "lock" would serialize nothing.
+	//
+	// `db.Connection(fn)` reserves one pool connection for the entire callback;
+	// every Raw/Exec/Transaction call on the handle passed in runs on that same
+	// connection, so the advisory lock actually guards the count→insert window.
+	// We acquire IP first, then device, in a consistent order so concurrent
+	// submitters can't deadlock.
+	return s.db.Connection(func(conn *gorm.DB) error {
 		if needIPCheck {
-			// Check max submissions per IP
-			if setting.IPMaxSubmissions > 0 {
-				var count int64
-				if err := tx.Model(&model.Answer{}).
-					Where("project_id = ? AND ip_address = ? AND (temp_save IS NULL OR temp_save = 0)", req.ProjectID, ipAddress).
-					Count(&count).Error; err != nil {
-					return fmt.Errorf("check IP submission count: %w", err)
-				}
-				if count >= int64(setting.IPMaxSubmissions) {
-					return ErrIPAlreadySubmitted
-				}
+			release, err := acquireSubmitLockOn(conn, submitLockName("i", req.ProjectID, ipAddress))
+			if err != nil {
+				return err
 			}
+			defer release()
+		}
+		if needDeviceCheck {
+			release, err := acquireSubmitLockOn(conn, submitLockName("d", req.ProjectID, fingerprint))
+			if err != nil {
+				return err
+			}
+			defer release()
+		}
 
-			// Check submission interval
-			if setting.IPInterval > 0 {
-				var latest model.Answer
-				err := tx.Where("project_id = ? AND ip_address = ? AND (temp_save IS NULL OR temp_save = 0)", req.ProjectID, ipAddress).
-					Order("create_at DESC").
-					First(&latest).Error
-				if err != nil && err != gorm.ErrRecordNotFound {
-					return fmt.Errorf("check IP interval: %w", err)
+		// NewDB:true gives the transaction a fresh Statement while keeping the
+		// pinned connection. Without it, the GET_LOCK Raw() above pollutes
+		// conn.Statement in place (GORM's clone flag is 0 for the handle passed
+		// into Connection callbacks), and Transaction inherits that polluted
+		// statement — which breaks any query that relies on table auto-inference
+		// from its destination (e.g. First(&x), Create(&x)) with
+		// "Table not set, please set it like: db.Model(&user)".
+		return conn.Session(&gorm.Session{NewDB: true}).Transaction(func(tx *gorm.DB) error {
+			if needIPCheck {
+				if setting.IPMaxSubmissions > 0 {
+					var count int64
+					if err := tx.Model(&model.Answer{}).
+						Where("project_id = ? AND ip_address = ? AND (temp_save IS NULL OR temp_save = 0)", req.ProjectID, ipAddress).
+						Count(&count).Error; err != nil {
+						return fmt.Errorf("check IP submission count: %w", err)
+					}
+					if count >= int64(setting.IPMaxSubmissions) {
+						return ErrIPAlreadySubmitted
+					}
 				}
-				if err == nil {
-					elapsed := time.Since(latest.CreatedAt).Seconds()
-					if elapsed < float64(setting.IPInterval) {
-						return ErrIPIntervalTooShort
+
+				if setting.IPInterval > 0 {
+					var latest model.Answer
+					err := tx.Where("project_id = ? AND ip_address = ? AND (temp_save IS NULL OR temp_save = 0)", req.ProjectID, ipAddress).
+						Order("create_at DESC").
+						First(&latest).Error
+					if err != nil && err != gorm.ErrRecordNotFound {
+						return fmt.Errorf("check IP interval: %w", err)
+					}
+					if err == nil {
+						elapsed := time.Since(latest.CreatedAt).Seconds()
+						if elapsed < float64(setting.IPInterval) {
+							return ErrIPIntervalTooShort
+						}
 					}
 				}
 			}
-		}
 
-		// Create answer within the same transaction
-		id, err := nanoid.New()
-		if err != nil {
-			return fmt.Errorf("generate id: %w", err)
-		}
-		a := &model.Answer{
-			BaseModel: model.BaseModel{
-				ID: id,
-			},
-			ProjectID: req.ProjectID,
-			Answer:    string(req.Answer),
-			MetaInfo:  string(req.MetaInfo),
-			TempSave:  req.TempSave,
-			IPAddress: ipAddress,
-		}
-		return tx.Create(a).Error
+			if needDeviceCheck {
+				var count int64
+				if err := tx.Model(&model.Answer{}).
+					Where("project_id = ? AND device_fingerprint = ? AND (temp_save IS NULL OR temp_save = 0)", req.ProjectID, fingerprint).
+					Count(&count).Error; err != nil {
+					return fmt.Errorf("check device submission count: %w", err)
+				}
+				if count >= int64(setting.DeviceMaxSubmissions) {
+					return ErrDeviceAlreadySubmitted
+				}
+			}
+
+			id, err := nanoid.New()
+			if err != nil {
+				return fmt.Errorf("generate id: %w", err)
+			}
+			a := &model.Answer{
+				BaseModel: model.BaseModel{
+					ID: id,
+				},
+				ProjectID:         req.ProjectID,
+				Answer:            string(req.Answer),
+				MetaInfo:          string(req.MetaInfo),
+				TempSave:          req.TempSave,
+				IPAddress:         ipAddress,
+				DeviceFingerprint: fingerprint,
+			}
+			return tx.Create(a).Error
+		})
 	})
+}
+
+// submitLockName builds a MySQL advisory-lock name that fits under the
+// 64-char MySQL 8+ cap. Raw projectId + fingerprint (up to 64 hex chars) or
+// IPv6 addresses blow past that limit, so we SHA-256 the composite key and
+// keep a 48-char hex prefix (192 bits — far beyond what this scheme needs
+// to avoid collisions between concurrent submitters). Domain is a short
+// "i"/"d" tag so the lock namespace is still debuggable in the process list.
+func submitLockName(domain, projectID, key string) string {
+	sum := sha256.Sum256([]byte(projectID + "|" + key))
+	return "rms_s_" + domain + "_" + hex.EncodeToString(sum[:])[:48]
+}
+
+// acquireSubmitLockOn runs GET_LOCK on the supplied connection-pinned handle
+// (obtained from `db.Connection(...)`) and returns a release closure that runs
+// RELEASE_LOCK on the SAME connection. MySQL advisory locks are session-scoped
+// so this pinning is required — see CreatePublicAnswerWithIP for the full note.
+func acquireSubmitLockOn(conn *gorm.DB, name string) (func(), error) {
+	var got int
+	if err := conn.Raw("SELECT GET_LOCK(?, 5)", name).Scan(&got).Error; err != nil {
+		return nil, fmt.Errorf("acquire submit lock: %w", err)
+	}
+	if got != 1 {
+		return nil, errors.New("submission in progress, please retry")
+	}
+	return func() {
+		conn.Exec("SELECT RELEASE_LOCK(?)", name)
+	}, nil
+}
+
+// CheckDeviceSubmission reports whether a device fingerprint can still submit
+// the given project. Used by the frontend pre-check before rendering the form.
+// Returns `allowed=true` when the device limit is disabled or capacity remains.
+func (s *AnswerService) CheckDeviceSubmission(projectID, fingerprint string) (*dto.DeviceCheckView, error) {
+	project, err := s.projectRepo.GetProject(projectID)
+	if err != nil {
+		return nil, err
+	}
+	var setting SurveySetting
+	if project.Setting != "" {
+		_ = json.Unmarshal([]byte(project.Setting), &setting)
+	}
+	view := &dto.DeviceCheckView{
+		Allowed:        true,
+		LimitEnabled:   setting.DeviceLimitEnabled,
+		MaxSubmissions: setting.DeviceMaxSubmissions,
+	}
+	if !setting.DeviceLimitEnabled || setting.DeviceMaxSubmissions <= 0 || fingerprint == "" {
+		return view, nil
+	}
+	var count int64
+	if err := s.db.Model(&model.Answer{}).
+		Where("project_id = ? AND device_fingerprint = ? AND (temp_save IS NULL OR temp_save = 0)", projectID, fingerprint).
+		Count(&count).Error; err != nil {
+		return nil, fmt.Errorf("count device submissions: %w", err)
+	}
+	view.SubmittedCount = int(count)
+	view.Allowed = count < int64(setting.DeviceMaxSubmissions)
+	return view, nil
 }
 
 // doCreateAnswer performs the actual answer creation.
@@ -279,11 +375,12 @@ func (s *AnswerService) doCreateAnswer(req *dto.AnswerRequest, userInfo *dto.Use
 			ID:       id,
 			CreateBy: userInfo.UserID,
 		},
-		ProjectID: req.ProjectID,
-		Answer:    string(req.Answer),
-		MetaInfo:  string(req.MetaInfo),
-		TempSave:  req.TempSave,
-		IPAddress: ipAddress,
+		ProjectID:         req.ProjectID,
+		Answer:            string(req.Answer),
+		MetaInfo:          string(req.MetaInfo),
+		TempSave:          req.TempSave,
+		IPAddress:         ipAddress,
+		DeviceFingerprint: req.DeviceFingerprint,
 	}
 	return s.repo.CreateAnswer(a)
 }

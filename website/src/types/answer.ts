@@ -13,6 +13,7 @@ export interface AnswerRequest {
   answer: object
   metaInfo?: object
   tempSave?: number
+  deviceFingerprint?: string
   ids?: string[]
 }
 

@@ -118,6 +118,8 @@ export interface SurveySetting {
   ipLimitEnabled?: boolean      // IP restriction master switch
   ipMaxSubmissions?: number     // Max submissions per IP (0 = unlimited)
   ipInterval?: number           // Min seconds between submissions from same IP (0 = no limit)
+  deviceLimitEnabled?: boolean  // Device-fingerprint restriction master switch
+  deviceMaxSubmissions?: number // Max submissions per device (0 = unlimited)
   [key: string]: any
 }
 

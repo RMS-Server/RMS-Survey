@@ -45,6 +45,7 @@ func (h *SurveyHandler) RegisterRoutes(public, survey gin.IRouter) {
 	public.POST("/statistics", h.Statistics)
 	public.POST("/saveAnswer", h.SaveAnswer)
 	public.POST("/tempSaveAnswer", h.TempSaveAnswer)
+	public.POST("/checkDevice", h.CheckDevice)
 	public.POST("/upload", h.Upload)
 	public.POST("/uploadAttachment", h.UploadAttachment)
 	public.GET("/preview/:attachmentId", h.Preview)
@@ -127,6 +128,20 @@ func (h *SurveyHandler) TempSaveAnswer(c *gin.Context) {
 		return
 	}
 	response.OK(c, nil)
+}
+
+func (h *SurveyHandler) CheckDevice(c *gin.Context) {
+	var req dto.DeviceCheckRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	result, err := h.svc.CheckDevice(&req)
+	if err != nil {
+		response.Fail(c, response.CodeError, err.Error())
+		return
+	}
+	response.OK(c, result)
 }
 
 func (h *SurveyHandler) Upload(c *gin.Context) {

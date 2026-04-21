@@ -13,15 +13,30 @@ type AnswerQuery struct {
 
 // AnswerRequest is used for create/update/delete answer operations.
 type AnswerRequest struct {
-	ID        string          `json:"id"`
-	ProjectID string          `json:"projectId"`
-	Answer    json.RawMessage `json:"answer"`
-	MetaInfo  json.RawMessage `json:"metaInfo"`
-	TempSave  *int            `json:"tempSave"`
+	ID                string          `json:"id"`
+	ProjectID         string          `json:"projectId"`
+	Answer            json.RawMessage `json:"answer"`
+	MetaInfo          json.RawMessage `json:"metaInfo"`
+	TempSave          *int            `json:"tempSave"`
+	DeviceFingerprint string          `json:"deviceFingerprint"`
 	// IDs for batch operations
 	IDs []string `json:"ids"`
 	// IsRead for marking answer as read/unread
 	IsRead *bool `json:"isRead"`
+}
+
+// DeviceCheckRequest is the pre-submission device-fingerprint probe.
+type DeviceCheckRequest struct {
+	ProjectID         string `json:"projectId" binding:"required"`
+	DeviceFingerprint string `json:"deviceFingerprint" binding:"required"`
+}
+
+// DeviceCheckView reports whether the device may still submit.
+type DeviceCheckView struct {
+	Allowed         bool `json:"allowed"`
+	SubmittedCount  int  `json:"submittedCount"`
+	MaxSubmissions  int  `json:"maxSubmissions"`
+	LimitEnabled    bool `json:"limitEnabled"`
 }
 
 // AnswerView is the response DTO for an answer.
