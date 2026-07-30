@@ -87,6 +87,10 @@ func (s *ProjectService) CreateProject(req *dto.ProjectRequest, userInfo *dto.Us
 	if req.Status != nil {
 		status = *req.Status
 	}
+	setting := req.Setting
+	if len(bytes.TrimSpace(setting)) == 0 {
+		setting = json.RawMessage(`{}`)
+	}
 	p := &model.Project{
 		BaseModel: model.BaseModel{
 			ID:       id,
@@ -95,7 +99,7 @@ func (s *ProjectService) CreateProject(req *dto.ProjectRequest, userInfo *dto.Us
 		ParentID: req.ParentID,
 		Name:     req.Name,
 		Survey:   string(req.Survey),
-		Setting:  string(req.Setting),
+		Setting:  string(setting),
 		Status:   status,
 		Mode:     req.Mode,
 		Priority: priority,
